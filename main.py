@@ -260,7 +260,8 @@ class MLPAutoencoder(nn.Module):
 # LOAD MODELS
 # =========================
 
-BASE = r"C:\Users\ASUS\Documents\MBZUAI Project"
+import os
+BASE = os.path.dirname(os.path.abspath(__file__))
 INPUT_DIM = 78
 SEQ_LEN = 20
 
