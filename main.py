@@ -3,6 +3,8 @@ import os
 from fastapi import FastAPI, UploadFile, File, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi import HTTPException
 import numpy as np
 import pandas as pd
@@ -161,6 +163,10 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(
     RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.get("/")
+async def serve_frontend():
+    return FileResponse(f"{BASE}/index.html")
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
