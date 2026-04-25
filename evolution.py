@@ -1,3 +1,5 @@
+from asyncio.log import logger
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -6,8 +8,10 @@ import math
 import os
 from datetime import datetime
 from database import get_db, save_scan
+import logging
+logger = logging.getLogger('stride.evolution')
 
-BASE = r"C:\Users\ASUS\Documents\MBZUAI Project"
+BASE = os.path.dirname(os.path.abspath(__file__))
 
 # =========================
 # MODEL DEFINITIONS
@@ -326,16 +330,19 @@ class ModelEvolutionEngine:
             conn.commit()
             conn.close()
 
-            print(f"\nEvolution #{self.evolution_count} complete!")
-            print(f"Updates: {update_count}")
-            print(f"Avg loss: {avg_loss:.4f}")
-            print(f"Model saved to: {evolved_path}")
+            logger.info(f"Evolution #{self.evolution_count} complete — "
+                   f"{update_count} updates, "
+                   f"avg loss: {avg_loss:.4f}")
+            logger.info(f"Evolution #{self.evolution_count} complete!")
+            logger.info(f"Updates: {update_count}")
+            logger.info(f"Avg loss: {avg_loss:.4f}")
+            logger.info(f"Model saved to: {evolved_path}")
 
             self.is_evolving = False
             return True
 
         except Exception as e:
-            print(f"Evolution failed: {e}")
+            logger.error(f"Evolution failed: {e}")
             import traceback
             traceback.print_exc()
             self.is_evolving = False
