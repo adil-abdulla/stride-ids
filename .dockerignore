@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+logs/
+stride.db
+*.pth
+*.pkl
+archive/
+unsw/
+*.csv
+.git/
+runtime.txt
+.python-version
