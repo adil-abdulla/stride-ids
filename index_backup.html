@@ -1,0 +1,2861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STRIDE — Network Intrusion Detection</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #04060f;
+  --bg2: #080d1a;
+  --bg3: #0d1526;
+  --bg4: #111e33;
+  --accent: #4f6ef7;
+  --accent2: #7c3aed;
+  --accent3: #06b6d4;
+  --green: #10b981;
+  --red: #ef4444;
+  --orange: #f97316;
+  --yellow: #eab308;
+  --text: #e2e8f0;
+  --text2: #64748b;
+  --text3: #94a3b8;
+  --border: #1e2d4a;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(79,110,247,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,110,247,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none; z-index: 0;
+}
+
+.orb {
+  position: fixed; border-radius: 50%;
+  filter: blur(120px); pointer-events: none; z-index: 0;
+}
+.orb1 { width:600px; height:600px; background:rgba(79,110,247,0.08); top:-200px; left:-200px; }
+.orb2 { width:400px; height:400px; background:rgba(124,58,237,0.06); bottom:0; right:-100px; }
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+.scanline {
+  position: fixed; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, transparent, rgba(79,110,247,0.1), transparent);
+  animation: scanline 8s linear infinite;
+  pointer-events: none; z-index: 0;
+}
+
+/* NAV */
+nav {
+  position: sticky; top:0; z-index:100;
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: rgba(4,6,15,0.9);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  display: flex; align-items: center; gap:12px;
+  font-size: 1.25rem; font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.logo-icon {
+  width:36px; height:36px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px;
+  box-shadow: 0 0 20px rgba(79,110,247,0.4);
+}
+
+.nav-tabs {
+  display: flex; gap: 4px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 4px;
+}
+
+.nav-tab {
+  padding: 6px 16px; border-radius: 8px;
+  font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; border: none;
+  color: var(--text2); background: transparent;
+  transition: all 0.2s; letter-spacing: 0.5px;
+}
+
+.nav-tab.active {
+  background: var(--bg4);
+  color: var(--text);
+  box-shadow: 0 0 10px rgba(79,110,247,0.2);
+}
+
+.nav-right { display:flex; align-items:center; gap:10px; }
+
+.badge {
+  font-size:11px; padding:4px 12px;
+  border-radius:20px; font-weight:500;
+}
+
+.badge-accent {
+  background:rgba(79,110,247,0.15); color:var(--accent);
+  border:1px solid rgba(79,110,247,0.3);
+}
+
+.badge-online {
+  background:rgba(16,185,129,0.15); color:var(--green);
+  border:1px solid rgba(16,185,129,0.3);
+  display:flex; align-items:center; gap:6px;
+}
+
+.badge-online::before {
+  content:''; width:6px; height:6px;
+  background:var(--green); border-radius:50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+
+/* HERO */
+.hero {
+  position:relative; z-index:1;
+  text-align:center; padding:5rem 2rem 3rem;
+}
+
+.hero-eyebrow {
+  font-size:0.75rem; letter-spacing:3px;
+  color:var(--accent); text-transform:uppercase;
+  margin-bottom:1.5rem; font-weight:600;
+}
+
+.hero h1 {
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight:900; letter-spacing:8px;
+  background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  margin-bottom:1.5rem;
+}
+
+.hero-desc {
+  font-size:1.05rem; color:var(--text3);
+  max-width:550px; margin:0 auto 0.75rem; line-height:1.7;
+}
+
+.hero-tags {
+  display:flex; justify-content:center;
+  gap:1rem; flex-wrap:wrap; margin-top:1.5rem;
+}
+
+.hero-tag {
+  font-size:0.7rem; letter-spacing:2px;
+  color:var(--accent3); text-transform:uppercase;
+  padding:4px 12px;
+  border:1px solid rgba(6,182,212,0.2);
+  border-radius:20px;
+  background:rgba(6,182,212,0.05);
+}
+
+/* STATS */
+.stats-row {
+  position:relative; z-index:1;
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:1px; max-width:900px; margin:0 auto 3rem;
+  padding:0 2rem;
+  background:var(--border);
+  border:1px solid var(--border);
+  border-radius:16px; overflow:hidden;
+}
+
+.stat-card {
+  background:var(--bg2); padding:1.5rem;
+  text-align:center; transition:background 0.2s;
+}
+
+.stat-card:hover { background:var(--bg3); }
+
+.stat-value {
+  font-size:1.75rem; font-weight:800;
+  color:var(--accent);
+}
+
+.stat-label {
+  font-size:0.7rem; color:var(--text2);
+  text-transform:uppercase; letter-spacing:1.5px; margin-top:4px;
+}
+
+/* UPLOAD */
+.upload-section {
+  position:relative; z-index:1;
+  max-width:700px; margin:0 auto 3rem; padding:0 2rem;
+}
+
+.upload-zone {
+  background:var(--bg2);
+  border:1.5px dashed var(--border);
+  border-radius:20px; padding:3rem 2rem;
+  text-align:center; cursor:pointer;
+  transition:all 0.3s; position:relative; overflow:hidden;
+}
+
+.upload-zone:hover, .upload-zone.dragging {
+  border-color:var(--accent);
+  box-shadow:0 0 40px rgba(79,110,247,0.1);
+}
+
+.upload-zone input {
+  position:absolute; inset:0; opacity:0; cursor:pointer;
+}
+
+.upload-graphic {
+  width:80px; height:80px; margin:0 auto 1.5rem;
+  background:linear-gradient(135deg, var(--bg3), var(--bg4));
+  border:1px solid var(--border); border-radius:20px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:2rem;
+}
+
+.upload-title { font-size:1.1rem; font-weight:600; margin-bottom:0.5rem; }
+.upload-sub { font-size:0.875rem; color:var(--text2); margin-bottom:1.5rem; }
+
+.btn {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:0.75rem 2rem; border-radius:12px;
+  font-size:0.9rem; font-weight:600;
+  cursor:pointer; border:none; transition:all 0.2s;
+}
+
+.btn-primary {
+  background:linear-gradient(135deg, var(--accent), var(--accent2));
+  color:white; box-shadow:0 0 30px rgba(79,110,247,0.3);
+}
+
+.btn-primary:hover { transform:translateY(-2px); box-shadow:0 0 40px rgba(79,110,247,0.5); }
+
+.btn-sm {
+  padding:4px 12px; font-size:0.75rem;
+  border-radius:8px; font-weight:600;
+  cursor:pointer; border:none; transition:all 0.15s;
+}
+
+.btn-confirm {
+  background:rgba(16,185,129,0.15); color:var(--green);
+  border:1px solid rgba(16,185,129,0.3);
+}
+
+.btn-confirm:hover { background:rgba(16,185,129,0.3); }
+
+.btn-reject {
+  background:rgba(239,68,68,0.15); color:var(--red);
+  border:1px solid rgba(239,68,68,0.3);
+}
+
+.btn-reject:hover { background:rgba(239,68,68,0.3); }
+
+.btn-benign {
+  background:rgba(79,110,247,0.15); color:var(--accent);
+  border:1px solid rgba(79,110,247,0.3);
+}
+
+/* PROGRESS */
+.progress-section {
+  display:none; position:relative; z-index:1;
+  max-width:700px; margin:0 auto 2rem; padding:0 2rem;
+}
+
+.progress-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; padding:2rem;
+}
+
+.progress-header {
+  display:flex; justify-content:space-between;
+  align-items:center; margin-bottom:1rem;
+}
+
+.progress-title { font-size:0.9rem; font-weight:600; color:var(--accent); }
+.progress-pct { font-size:0.85rem; color:var(--text2); }
+
+.progress-bar-bg {
+  height:4px; background:var(--bg4);
+  border-radius:4px; overflow:hidden; margin-bottom:1rem;
+}
+
+.progress-bar-fill {
+  height:100%;
+  background:linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius:4px; transition:width 0.4s ease; width:0%;
+  box-shadow:0 0 10px rgba(79,110,247,0.5);
+}
+
+.progress-sub { font-size:0.8rem; color:var(--text2); }
+
+.live-feed { max-height:100px; overflow:hidden; margin-top:1rem; }
+
+.live-item {
+  display:flex; align-items:center; gap:8px;
+  font-size:0.75rem; color:var(--text2);
+  padding:3px 0;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity:0; transform:translateY(-4px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+.live-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+
+/* RESULTS */
+.results-section {
+  display:none; position:relative; z-index:1;
+  max-width:1300px; margin:0 auto; padding:0 2rem 6rem;
+}
+
+.section-header {
+  display:flex; align-items:center; gap:12px; margin-bottom:1.25rem;
+}
+
+.section-line {
+  flex:1; height:1px;
+  background:linear-gradient(90deg, var(--border), transparent);
+}
+
+.section-label {
+  font-size:0.7rem; font-weight:700;
+  letter-spacing:3px; text-transform:uppercase; color:var(--text2);
+}
+
+/* SUMMARY CARDS */
+.summary-grid {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:1rem; margin-bottom:2rem;
+}
+
+.summary-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; padding:1.75rem;
+  position:relative; overflow:hidden;
+  transition:transform 0.2s;
+}
+
+.summary-card:hover { transform:translateY(-2px); }
+
+.summary-card::before {
+  content:''; position:absolute;
+  top:0; left:0; right:0; height:2px;
+}
+
+.summary-card.danger::before { background:linear-gradient(90deg, var(--red), transparent); }
+.summary-card.safe::before { background:linear-gradient(90deg, var(--green), transparent); }
+.summary-card.warning::before { background:linear-gradient(90deg, var(--orange), transparent); }
+
+.summary-icon { font-size:1.5rem; margin-bottom:0.75rem; }
+.summary-number { font-size:2.75rem; font-weight:900; line-height:1; margin-bottom:0.5rem; }
+.summary-number.red { color:var(--red); }
+.summary-number.green { color:var(--green); }
+.summary-number.orange { color:var(--orange); }
+.summary-label { font-size:0.8rem; color:var(--text2); text-transform:uppercase; letter-spacing:1px; }
+.summary-sub { font-size:0.75rem; color:var(--text2); margin-top:0.5rem; }
+
+/* CHARTS */
+.charts-grid {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:1rem; margin-bottom:2rem;
+}
+
+.chart-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; padding:1.5rem;
+}
+
+.chart-title {
+  font-size:0.8rem; font-weight:600; color:var(--text2);
+  text-transform:uppercase; letter-spacing:1.5px; margin-bottom:1.25rem;
+}
+
+.timeline-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; padding:1.5rem; margin-bottom:2rem;
+}
+
+/* MODEL SCORES */
+.models-grid {
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:1rem; margin-bottom:2rem;
+}
+
+.model-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; padding:1.25rem;
+}
+
+.model-name { font-size:0.75rem; color:var(--text2); text-transform:uppercase; letter-spacing:1px; margin-bottom:0.75rem; }
+.model-score-val { font-size:1.5rem; font-weight:700; color:var(--accent); margin-bottom:0.5rem; }
+.model-bar-bg { height:3px; background:var(--bg4); border-radius:3px; overflow:hidden; }
+.model-bar-fill { height:100%; border-radius:3px; transition:width 1s ease; }
+
+/* BREAKDOWN */
+.breakdown-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; padding:1.5rem; margin-bottom:2rem;
+}
+
+.breakdown-row {
+  display:flex; align-items:center; gap:12px;
+  padding:0.6rem 0;
+  border-bottom:1px solid rgba(30,45,74,0.4);
+}
+
+.breakdown-row:last-child { border-bottom:none; }
+.breakdown-name { font-size:0.85rem; min-width:200px; color:var(--text3); }
+.breakdown-bar-bg { flex:1; height:6px; background:var(--bg4); border-radius:3px; overflow:hidden; }
+.breakdown-bar-fill { height:100%; border-radius:3px; transition:width 0.8s ease; }
+.breakdown-pct { font-size:0.8rem; font-weight:600; min-width:45px; text-align:right; }
+.breakdown-count { font-size:0.75rem; color:var(--text2); min-width:60px; text-align:right; }
+
+/* TABLE */
+.table-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; padding:1.5rem; overflow-x:auto;
+}
+
+table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+
+th {
+  text-align:left; padding:0.75rem 1rem;
+  font-size:0.7rem; font-weight:600; color:var(--text2);
+  text-transform:uppercase; letter-spacing:1.5px;
+  border-bottom:1px solid var(--border);
+}
+
+td {
+  padding:0.75rem 1rem;
+  border-bottom:1px solid rgba(30,45,74,0.4);
+  color:var(--text3);
+}
+
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(79,110,247,0.03); }
+
+.risk {
+  display:inline-flex; align-items:center;
+  gap:5px; padding:3px 10px;
+  border-radius:20px; font-size:0.7rem;
+  font-weight:700; letter-spacing:1px;
+}
+
+.risk-CRITICAL { background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+.risk-HIGH { background:rgba(249,115,22,0.15); color:#fb923c; border:1px solid rgba(249,115,22,0.3); }
+.risk-MEDIUM { background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3); }
+.risk-LOW { background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); }
+.pred-ATTACK { background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+.pred-BENIGN { background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); }
+
+.score-cell { display:flex; align-items:center; gap:8px; }
+.score-bar-sm { width:60px; height:4px; background:var(--bg4); border-radius:2px; overflow:hidden; }
+.score-bar-sm-fill { height:100%; border-radius:2px; }
+
+.feedback-done {
+  font-size:0.75rem; color:var(--green);
+  padding:3px 10px; background:rgba(16,185,129,0.1);
+  border-radius:20px; border:1px solid rgba(16,185,129,0.3);
+}
+
+/* HISTORY PAGE */
+.history-section {
+  position:relative; z-index:1;
+  max-width:1300px; margin:0 auto; padding:2rem 2rem 6rem;
+}
+
+.history-stats {
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:1rem; margin-bottom:2rem;
+}
+
+.hstat-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; padding:1.25rem;
+}
+
+.hstat-val { font-size:1.5rem; font-weight:800; color:var(--accent); }
+.hstat-label { font-size:0.75rem; color:var(--text2); text-transform:uppercase; letter-spacing:1px; margin-top:4px; }
+
+.scan-list { display:flex; flex-direction:column; gap:8px; }
+
+.scan-item {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:12px; padding:1rem 1.25rem;
+  display:flex; align-items:center; gap:1rem;
+  transition:all 0.2s;
+}
+
+.scan-item:hover { background:var(--bg3); border-color:rgba(79,110,247,0.3); }
+
+.scan-icon { font-size:1.25rem; flex-shrink:0; }
+
+.scan-info { flex:1; }
+.scan-filename { font-size:0.9rem; font-weight:600; color:var(--text); }
+.scan-meta { font-size:0.75rem; color:var(--text2); margin-top:2px; }
+
+.scan-stats { display:flex; gap:1rem; align-items:center; }
+.scan-stat { text-align:center; }
+.scan-stat-val { font-size:1rem; font-weight:700; }
+.scan-stat-label { font-size:0.65rem; color:var(--text2); text-transform:uppercase; }
+
+.scan-rate {
+  font-size:0.8rem; padding:4px 10px;
+  border-radius:20px; font-weight:600;
+}
+
+/* DNA PAGE */
+.dna-section {
+  position:relative; z-index:1;
+  max-width:1300px; margin:0 auto; padding:2rem 2rem 6rem;
+}
+
+.dna-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; padding:1.5rem; margin-bottom:1rem;
+  display:flex; align-items:center; gap:1.5rem;
+  transition:all 0.2s;
+}
+
+.dna-card:hover { border-color:rgba(79,110,247,0.3); }
+
+.dna-hash {
+  font-family:monospace; font-size:0.85rem;
+  color:var(--accent); min-width:140px;
+  background:rgba(79,110,247,0.1); padding:4px 10px;
+  border-radius:8px;
+}
+
+.dna-info { flex:1; }
+.dna-type { font-size:0.9rem; font-weight:600; color:var(--text); }
+.dna-meta { font-size:0.75rem; color:var(--text2); margin-top:2px; }
+
+.dna-scores { display:flex; gap:1rem; }
+.dna-score { text-align:center; }
+.dna-score-val { font-size:0.9rem; font-weight:700; color:var(--accent3); }
+.dna-score-label { font-size:0.65rem; color:var(--text2); }
+
+.dna-count {
+  font-size:1.25rem; font-weight:800; color:var(--orange);
+  min-width:40px; text-align:center;
+}
+
+/* FEEDBACK STATS */
+.feedback-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; padding:1.5rem; margin-bottom:2rem;
+}
+
+.feedback-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0.5rem 0; border-bottom:1px solid rgba(30,45,74,0.4);
+}
+
+.feedback-row:last-child { border-bottom:none; }
+
+.error-box {
+  background:rgba(239,68,68,0.1);
+  border:1px solid rgba(239,68,68,0.3);
+  border-radius:12px; padding:1rem 1.5rem;
+  font-size:0.875rem; color:#f87171; margin-top:1rem;
+}
+
+footer {
+  position:relative; z-index:1;
+  text-align:center; padding:2rem;
+  border-top:1px solid var(--border);
+  color:var(--text2); font-size:0.8rem;
+}
+
+.empty-state {
+  text-align:center; padding:4rem 2rem;
+  color:var(--text2);
+}
+
+.empty-icon { font-size:3rem; margin-bottom:1rem; }
+.empty-title { font-size:1.1rem; font-weight:600; color:var(--text3); margin-bottom:0.5rem; }
+.empty-sub { font-size:0.875rem; }
+/* FEDERATION */
+.org-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 1.5rem;
+  transition: all 0.2s;
+}
+
+.org-card:hover { border-color: rgba(79,110,247,0.3); }
+
+.org-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  display: flex; align-items: center;
+  justify-content: center; font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.org-info { flex: 1; }
+.org-name { font-size: 0.95rem; font-weight: 700; color: var(--text); }
+.org-desc { font-size: 0.75rem; color: var(--text2); margin-top: 3px; }
+
+.org-stats { display: flex; gap: 1.5rem; }
+.org-stat { text-align: center; }
+.org-stat-val { font-size: 1rem; font-weight: 700; color: var(--accent); }
+.org-stat-label { font-size: 0.65rem; color: var(--text2); text-transform: uppercase; }
+
+.fed-result-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.fed-improvement {
+  display: inline-block;
+  padding: 2px 10px; border-radius: 20px;
+  font-size: 0.8rem; font-weight: 700;
+}
+
+.fed-improvement.positive {
+  background: rgba(16,185,129,0.15);
+  color: var(--green);
+  border: 1px solid rgba(16,185,129,0.3);
+}
+
+.fed-improvement.negative {
+  background: rgba(239,68,68,0.15);
+  color: var(--red);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+/* ALERT CARDS */
+.alert-card {
+  background: rgba(239,68,68,0.05);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 16px; padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  display: flex; align-items: flex-start; gap: 1rem;
+}
+
+.alert-icon { font-size: 1.5rem; flex-shrink: 0; }
+.alert-body { flex: 1; }
+.alert-title { font-size: 0.9rem; font-weight: 600; color: #f87171; margin-bottom: 0.25rem; }
+.alert-sub { font-size: 0.8rem; color: var(--text2); }
+.alert-similarity { font-size: 1.25rem; font-weight: 800; color: var(--orange); flex-shrink: 0; }
+
+/* CAMPAIGN CARDS */
+.campaign-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 1.5rem;
+  transition: all 0.2s;
+}
+
+.campaign-card:hover { border-color: rgba(79,110,247,0.3); }
+.campaign-type { font-size: 0.95rem; font-weight: 700; color: var(--text); min-width: 200px; }
+.campaign-meta { font-size: 0.75rem; color: var(--text2); margin-top: 3px; }
+.campaign-stats { display: flex; gap: 1.5rem; margin-left: auto; }
+.campaign-stat { text-align: center; }
+.campaign-stat-val { font-size: 1rem; font-weight: 700; color: var(--accent); }
+.campaign-stat-label { font-size: 0.65rem; color: var(--text2); text-transform: uppercase; }
+/* SHAP */
+.shap-bar-container {
+  display: flex; align-items: center;
+  gap: 10px; padding: 5px 0;
+  border-bottom: 1px solid rgba(30,45,74,0.3);
+}
+
+.shap-feature {
+  font-size: 0.78rem; color: var(--text3);
+  min-width: 180px; text-align: right;
+}
+
+.shap-bar-wrap {
+  flex: 1; height: 8px;
+  background: var(--bg4); border-radius: 4px;
+  overflow: hidden;
+}
+
+.shap-bar-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 0.8s ease;
+}
+
+.shap-val {
+  font-size: 0.75rem; font-weight: 700;
+  min-width: 50px; text-align: left;
+  color: var(--accent);
+}
+/* ========================
+   MOBILE RESPONSIVE
+   ======================== */
+
+@media (max-width: 768px) {
+
+  /* NAV */
+  nav {
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .nav-tabs {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    justify-content: flex-start;
+  }
+
+  .nav-tabs::-webkit-scrollbar { display: none; }
+
+  .nav-tab {
+    padding: 5px 12px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .nav-right { order: 2; }
+
+  /* HERO */
+  .hero { padding: 2rem 1rem 1.5rem; }
+
+  .hero h1 {
+    font-size: clamp(2.5rem, 12vw, 4rem);
+    letter-spacing: 4px;
+  }
+
+  .hero-tags { gap: 0.5rem; }
+
+  .hero-tag { font-size: 0.65rem; }
+
+  /* STATS ROW */
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+    margin: 0 1rem 2rem;
+    padding: 0;
+  }
+
+  /* UPLOAD */
+  .upload-section {
+    padding: 0 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .upload-zone { padding: 2rem 1rem; }
+
+  /* PROGRESS */
+  .progress-section { padding: 0 1rem; }
+
+  /* RESULTS */
+  .results-section { padding: 0 1rem 4rem; }
+
+  /* SUMMARY GRID */
+  .summary-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .summary-number { font-size: 2rem; }
+
+  /* CHARTS */
+  .charts-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* MODELS GRID */
+  .models-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  /* TABLE */
+  .table-card {
+    padding: 1rem 0.5rem;
+    overflow-x: auto;
+  }
+
+  table { font-size: 0.75rem; }
+
+  th { padding: 0.5rem 0.4rem; font-size: 0.6rem; }
+  td { padding: 0.5rem 0.4rem; }
+
+  .score-bar-sm { width: 35px; }
+
+  /* HISTORY */
+  .history-section { padding: 1rem 1rem 4rem; }
+
+  .history-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .scan-item {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .scan-stats { margin-left: auto; }
+
+  /* DNA */
+  .dna-section { padding: 1rem 1rem 4rem; }
+
+  .dna-card {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .dna-hash { min-width: unset; }
+
+  .dna-scores { gap: 0.5rem; }
+
+  /* INTELLIGENCE */
+  #threatLevelCard {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  #threatLevelCard > div:last-child {
+    grid-template-columns: repeat(3, 1fr) !important;
+    width: 100%;
+  }
+
+  /* FEDERATION */
+  .org-card {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .org-stats { margin-left: 0; }
+
+  /* SHAP */
+  .shap-feature { min-width: 120px; font-size: 0.7rem; }
+
+  /* SECTION HEADERS */
+  .section-header { flex-wrap: wrap; gap: 6px; }
+
+  /* BREAKDOWN */
+  .breakdown-name { min-width: 130px; font-size: 0.78rem; }
+
+  /* CAMPAIGN */
+  .campaign-card { flex-wrap: wrap; }
+  .campaign-stats { margin-left: 0; }
+}
+
+@media (max-width: 480px) {
+
+  .hero h1 {
+    font-size: 2.5rem;
+    letter-spacing: 2px;
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .models-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .history-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .summary-number { font-size: 1.75rem; }
+
+  .btn { padding: 0.65rem 1.25rem; font-size: 0.85rem; }
+
+  nav { padding: 0.6rem 0.75rem; }
+
+  .logo { font-size: 1rem; letter-spacing: 2px; }
+
+  .logo-icon { width: 28px; height: 28px; font-size: 14px; }
+
+  /* Hide score bars on very small screens */
+  .score-bar-sm { display: none; }
+
+  /* Stack federation org stats */
+  .org-stats {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="scanline"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    STRIDE
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('analyze')">Analyze</button>
+    <button class="nav-tab" onclick="showPage('history')">History</button>
+    <button class="nav-tab" onclick="showPage('dna')">Threat DNA</button>
+    <button class="nav-tab" onclick="showPage('intelligence')">Intelligence</button>
+    <button class="nav-tab" onclick="showPage('federation')">Federation</button>
+  </div>
+  <div class="nav-right">
+    <span class="badge badge-accent">v2.0</span>
+    <span class="badge badge-online" id="apiStatus">API Online</span>
+  </div>
+</nav>
+
+<!-- ==================== ANALYZE PAGE ==================== -->
+<div id="page-analyze" class="page active">
+
+  <div class="hero">
+    <div class="hero-eyebrow">Advanced Threat Intelligence Platform</div>
+    <h1>STRIDE</h1>
+    <p class="hero-desc">
+      Self-supervised Transformer intrusion detection.
+      Zero labeled data required.
+    </p>
+    <div class="hero-tags">
+      <span class="hero-tag">Transformer Architecture</span>
+      <span class="hero-tag">Zero-Day Detection</span>
+      <span class="hero-tag">Self-Evolving</span>
+      <span class="hero-tag">Threat DNA</span>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value">0.894</div>
+      <div class="stat-label">Best AUC</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">95%</div>
+      <div class="stat-label">Attack Recall</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">14</div>
+      <div class="stat-label">Attack Types</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">2.5M</div>
+      <div class="stat-label">Flows Trained</div>
+    </div>
+  </div>
+
+  <div class="upload-section">
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".csv">
+      <div class="upload-graphic">📡</div>
+      <div class="upload-title">Drop network traffic CSV here</div>
+      <div class="upload-sub">CICIDS format · Any size · Auto feature alignment</div>
+      <button class="btn btn-primary"
+              onclick="event.stopPropagation();document.getElementById('fileInput').click()">
+        ⚡ Analyze Traffic
+      </button>
+    </div>
+    <div id="errorBox"></div>
+  </div>
+
+  <div class="progress-section" id="progressSection">
+    <div class="progress-card">
+      <div class="progress-header">
+        <span class="progress-title" id="progressLabel">Analyzing...</span>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-sub" id="progressSub"></div>
+      <div class="live-feed" id="liveFeed"></div>
+    </div>
+  </div>
+
+  <div class="results-section" id="resultsSection">
+
+    <div class="section-header">
+      <span class="section-label">Threat Summary</span>
+      <div class="section-line"></div>
+      <span style="font-size:0.75rem;color:var(--text2)" id="scanFilename"></span>
+      <button class="btn btn-sm btn-benign" onclick="exportPDF()" id="exportBtn">
+        📄 Export PDF
+      </button>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card danger">
+        <div class="summary-icon">🚨</div>
+        <div class="summary-number red" id="rAttacks">—</div>
+        <div class="summary-label">Attack Sequences</div>
+        <div class="summary-sub" id="rAttackRate"></div>
+      </div>
+      <div class="summary-card safe">
+        <div class="summary-icon">✅</div>
+        <div class="summary-number green" id="rBenign">—</div>
+        <div class="summary-label">Benign Sequences</div>
+        <div class="summary-sub" id="rTotal"></div>
+      </div>
+      <div class="summary-card warning">
+        <div class="summary-icon">⚠️</div>
+        <div class="summary-number orange" id="rMaxScore">—</div>
+        <div class="summary-label">Max Threat Score</div>
+        <div class="summary-sub" id="rAvgScore"></div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <span class="section-label">Analysis</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Anomaly Score Distribution</div>
+        <canvas id="histChart" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Threat Breakdown</div>
+        <canvas id="pieChart" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="timeline-card">
+      <div class="chart-title">Anomaly Score Timeline — Red line = detection threshold</div>
+      <canvas id="timelineChart" height="100"></canvas>
+    </div>
+
+    <div class="section-header">
+      <span class="section-label">Model Consensus</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="models-grid">
+      <div class="model-card">
+        <div class="model-name">Transformer V3</div>
+        <div class="model-score-val" id="mT">—</div>
+        <div class="model-bar-bg">
+          <div class="model-bar-fill" id="mTBar" style="background:var(--accent);width:0%"></div>
+        </div>
+      </div>
+      <div class="model-card">
+        <div class="model-name">MLP Autoencoder</div>
+        <div class="model-score-val" id="mM">—</div>
+        <div class="model-bar-bg">
+          <div class="model-bar-fill" id="mMBar" style="background:var(--accent2);width:0%"></div>
+        </div>
+      </div>
+      <div class="model-card">
+        <div class="model-name">Robust Transformer</div>
+        <div class="model-score-val" id="mR">—</div>
+        <div class="model-bar-bg">
+          <div class="model-bar-fill" id="mRBar" style="background:var(--accent3);width:0%"></div>
+        </div>
+      </div>
+      <div class="model-card">
+        <div class="model-name">Ensemble Score</div>
+        <div class="model-score-val" id="mE">—</div>
+        <div class="model-bar-bg">
+          <div class="model-bar-fill" id="mEBar" style="background:var(--green);width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <span class="section-label">Attack Type Breakdown</span>
+      <div class="section-line"></div>
+    </div>
+    <div class="breakdown-card" id="breakdownCard"></div>
+    <div class="section-header" style="margin-top:2rem">
+      <span class="section-label">Explainability — SHAP Analysis</span>
+      <div class="section-line"></div>
+      <span style="font-size:0.72rem;color:var(--text2)">
+        Click any row in the table below to see feature importance
+      </span>
+    </div>
+
+    <div id="shapPanel" style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem">
+      <div style="text-align:center;padding:2rem;color:var(--text2);font-size:0.85rem">
+        🔍 Click a row in the Top Suspicious Sequences table to see which features drove that detection
+      </div>
+    </div>
+    
+    <div class="section-header" style="margin-top:2rem">
+      <span class="section-label">Top Suspicious Sequences</span>
+      <div class="section-line"></div>
+      <span style="font-size:0.72rem;color:var(--text2)">
+        Click ✓ to confirm attack · ✗ for false positive · helps model evolve
+      </span>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:0.75rem;flex-wrap:wrap">
+      <input id="tableFilter" type="text"
+             placeholder="🔍 Filter by type, risk, prediction..."
+             oninput="filterTable(this.value)"
+             style="flex:1;min-width:200px;
+                    background:var(--bg2);
+                    border:1px solid var(--border);
+                    border-radius:10px;padding:8px 14px;
+                    color:var(--text);font-size:0.85rem;
+                    outline:none;">
+      <select id="riskFilter" onchange="filterTable()"
+              style="background:var(--bg2);
+                     border:1px solid var(--border);
+                     border-radius:10px;padding:8px 12px;
+                     color:var(--text);font-size:0.85rem;
+                     cursor:pointer;outline:none;">
+        <option value="">All Risk Levels</option>
+        <option value="CRITICAL">CRITICAL</option>
+        <option value="HIGH">HIGH</option>
+        <option value="MEDIUM">MEDIUM</option>
+        <option value="LOW">LOW</option>
+      </select>
+      <select id="predFilter" onchange="filterTable()"
+              style="background:var(--bg2);
+                     border:1px solid var(--border);
+                     border-radius:10px;padding:8px 12px;
+                     color:var(--text);font-size:0.85rem;
+                     cursor:pointer;outline:none;">
+        <option value="">All Predictions</option>
+        <option value="ATTACK">ATTACK</option>
+        <option value="BENIGN">BENIGN</option>
+      </select>
+      <button class="btn btn-sm btn-benign"
+              onclick="resetTableFilters()">
+        ✕ Clear
+      </button>
+    </div>
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortTable('sequence')" style="cursor:pointer" title="Sort">
+              # <span id="sort-sequence"></span>
+            </th>
+            <th onclick="sortTable('transformer_score')" style="cursor:pointer" title="Sort">
+              Transformer <span id="sort-transformer_score"></span>
+            </th>
+            <th onclick="sortTable('mlp_score')" style="cursor:pointer" title="Sort">
+              MLP <span id="sort-mlp_score"></span>
+            </th>
+            <th onclick="sortTable('robust_score')" style="cursor:pointer" title="Sort">
+              Robust <span id="sort-robust_score"></span>
+            </th>
+            <th onclick="sortTable('ensemble_score')" style="cursor:pointer" title="Sort">
+              Ensemble <span id="sort-ensemble_score"></span>
+            </th>
+            <th onclick="sortTable('risk_level')" style="cursor:pointer" title="Sort">
+              Risk <span id="sort-risk_level"></span>
+            </th>
+            <th onclick="sortTable('prediction')" style="cursor:pointer" title="Sort">
+              Prediction <span id="sort-prediction"></span>
+            </th>
+            <th onclick="sortTable('attack_type')" style="cursor:pointer" title="Sort">
+              Type <span id="sort-attack_type"></span>
+            </th>
+            <th>Feedback</th>
+          </tr>
+        </thead>
+        <tbody id="resultsTable"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== HISTORY PAGE ==================== -->
+<div id="page-history" class="page">
+  <div class="history-section">
+
+    <div class="section-header" style="margin-bottom:2rem">
+      <span class="section-label">Scan History</span>
+      <div class="section-line"></div>
+      <button class="btn btn-sm btn-benign" onclick="loadHistory()">↻ Refresh</button>
+    </div>
+
+    <div class="history-stats" id="historyStats">
+      <div class="hstat-card">
+        <div class="hstat-val" id="hTotalScans">—</div>
+        <div class="hstat-label">Total Scans</div>
+      </div>
+      <div class="hstat-card">
+        <div class="hstat-val" id="hTotalAttacks">—</div>
+        <div class="hstat-label">Attacks Detected</div>
+      </div>
+      <div class="hstat-card">
+        <div class="hstat-val" id="hTotalFlows">—</div>
+        <div class="hstat-label">Flows Analyzed</div>
+      </div>
+      <div class="hstat-card">
+        <div class="hstat-val" id="hAvgRate">—</div>
+        <div class="hstat-label">Avg Attack Rate</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <span class="section-label">Feedback & Model Evolution</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="feedback-card" id="feedbackCard">
+      <div style="color:var(--text2);font-size:0.85rem">No feedback recorded yet. Confirm or reject detections to help the model evolve.</div>
+    </div>
+
+    <div class="section-header">
+      <span class="section-label">Past Scans</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="scan-list" id="scanList">
+      <div class="empty-state">
+        <div class="empty-icon">📂</div>
+        <div class="empty-title">No scans yet</div>
+        <div class="empty-sub">Upload a CSV file to start analyzing traffic</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== DNA PAGE ==================== -->
+<div id="page-dna" class="page">
+  <div class="dna-section">
+
+    <div class="section-header" style="margin-bottom:2rem">
+      <span class="section-label">Threat DNA Library</span>
+      <div class="section-line"></div>
+      <button class="btn btn-sm btn-benign" onclick="loadDNA()">↻ Refresh</button>
+    </div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem">
+      <div style="font-size:0.85rem;color:var(--text3);line-height:1.7">
+        Every attack detected by STRIDE generates a unique DNA fingerprint based on its score pattern.
+        These fingerprints are stored here and matched against future attacks to identify repeat threat actors
+        and predict attack campaigns. This is the foundation of STRIDE's federated threat intelligence network.
+      </div>
+    </div>
+
+    <div id="dnaStats" style="display:flex;gap:1rem;margin-bottom:2rem">
+      <div class="hstat-card" style="flex:1">
+        <div class="hstat-val" id="dnaTotal">—</div>
+        <div class="hstat-label">Unique Signatures</div>
+      </div>
+    </div>
+
+    <div id="dnaList">
+      <div class="empty-state">
+        <div class="empty-icon">🧬</div>
+        <div class="empty-title">No DNA signatures yet</div>
+        <div class="empty-sub">Analyze traffic files to start building the threat DNA library</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== INTELLIGENCE PAGE ==================== -->
+<div id="page-intelligence" class="page">
+  <div class="dna-section">
+
+    <div class="section-header" style="margin-bottom:2rem">
+      <span class="section-label">Threat Intelligence</span>
+      <div class="section-line"></div>
+      <button class="btn btn-sm btn-benign" onclick="loadIntelligence()">↻ Refresh</button>
+    </div>
+
+    <!-- THREAT LEVEL -->
+    <div id="threatLevelCard" style="margin-bottom:2rem;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:2rem;display:flex;align-items:center;gap:2rem">
+      <div>
+        <div style="font-size:0.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:0.5rem">Current Threat Level</div>
+        <div id="threatLevelBadge" style="font-size:2rem;font-weight:900">—</div>
+      </div>
+      <div style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:1rem">
+        <div class="hstat-card">
+          <div class="hstat-val" id="iTotalSigs">—</div>
+          <div class="hstat-label">DNA Signatures</div>
+        </div>
+        <div class="hstat-card">
+          <div class="hstat-val" id="iTotalAttacks">—</div>
+          <div class="hstat-label">Attacks Detected</div>
+        </div>
+        <div class="hstat-card">
+          <div class="hstat-val" id="iModelStatus">—</div>
+          <div class="hstat-label">Model Status</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DNA ALERTS -->
+    <div class="section-header">
+      <span class="section-label">DNA Match Alerts</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div id="dnaAlertsCard" style="margin-bottom:2rem">
+      <div class="empty-state">
+        <div class="empty-icon">🧬</div>
+        <div class="empty-title">No DNA matches yet</div>
+        <div class="empty-sub">Analyze multiple files to start detecting repeat threat actors</div>
+      </div>
+    </div>
+
+    <!-- CAMPAIGNS -->
+    <div class="section-header">
+      <span class="section-label">Attack Campaigns</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div id="campaignsCard" style="margin-bottom:2rem">
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title">No campaigns detected</div>
+        <div class="empty-sub">Campaigns appear when multiple attacks share DNA signatures</div>
+      </div>
+    </div>
+
+    <!-- TRENDS -->
+    <div class="section-header">
+      <span class="section-label">Threat Trends</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:2rem">
+      <div class="chart-title">Attack Rate Over Time</div>
+      <canvas id="trendsChart" height="120"></canvas>
+    </div>
+
+  </div>
+</div>
+<!-- ==================== FEDERATION PAGE ==================== -->
+<div id="page-federation" class="page">
+  <div class="dna-section">
+
+    <div class="section-header" style="margin-bottom:2rem">
+      <span class="section-label">Federated Learning</span>
+      <div class="section-line"></div>
+      <button class="btn btn-sm btn-benign" onclick="loadFederation()">↻ Refresh</button>
+    </div>
+
+    <!-- EXPLAINER -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem">
+      <div style="font-size:0.85rem;color:var(--text3);line-height:1.8">
+        <strong style="color:var(--text)">How it works:</strong>
+        Each organization trains its own local model on private data.
+        The Federated Aggregator combines their model weights using
+        <strong style="color:var(--accent)">FedAvg</strong> —
+        weighted by data size — without any organization sharing raw traffic.
+        The global model is distributed back to all orgs, making everyone smarter
+        without compromising privacy.
+      </div>
+    </div>
+
+    <!-- STATUS CARDS -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem">
+      <div class="hstat-card">
+        <div class="hstat-val" id="fedOrgs">3</div>
+        <div class="hstat-label">Organizations</div>
+      </div>
+      <div class="hstat-card">
+        <div class="hstat-val" id="fedRounds">—</div>
+        <div class="hstat-label">Rounds Complete</div>
+      </div>
+      <div class="hstat-card">
+        <div class="hstat-val" id="fedStatus">—</div>
+        <div class="hstat-label">Status</div>
+      </div>
+    </div>
+
+    <!-- ORGANIZATIONS -->
+    <div class="section-header">
+      <span class="section-label">Participating Organizations</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div id="orgsList" style="margin-bottom:2rem"></div>
+
+    <!-- RUN FEDERATION -->
+    <div class="section-header">
+      <span class="section-label">Run Federation Round</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem">
+      <div style="font-size:0.85rem;color:var(--text3);margin-bottom:1.5rem;line-height:1.7">
+        Running a federation round will collect model weights from all 3 organizations,
+        apply FedAvg, and distribute the improved global model back.
+        This takes 2-5 minutes depending on your hardware.
+      </div>
+      <button class="btn btn-primary" onclick="runFederation()" id="fedRunBtn">
+        ⚡ Run Federation Round
+      </button>
+      <div id="fedRunStatus" style="margin-top:1rem"></div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="section-header">
+      <span class="section-label">Federation Results</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div id="fedResults" style="margin-bottom:2rem">
+      <div class="empty-state">
+        <div class="empty-icon">🌐</div>
+        <div class="empty-title">No federation rounds yet</div>
+        <div class="empty-sub">Run a federation round to see results</div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="section-header">
+      <span class="section-label">Round History</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div id="fedHistory">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">No history yet</div>
+        <div class="empty-sub">History appears after running federation rounds</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<footer>
+  STRIDE v2.0 — Self-supervised TRansformer Intrusion DEtection · MBZUAI Research
+</footer>
+
+<script>
+const API = 'http://localhost:8000'
+let charts = {}
+let currentScanId = null
+let detectionIds = []
+
+// ========================
+// PAGE NAVIGATION
+// ========================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'))
+  document.getElementById(`page-${name}`).classList.add('active')
+  event.target.classList.add('active')
+
+  if (name === 'history') loadHistory()
+  if (name === 'dna') loadDNA()
+  if (name === 'intelligence') loadIntelligence()
+  if (name === 'federation') loadFederation()
+}
+
+// ========================
+// DRAG & DROP
+// ========================
+const dropZone = document.getElementById('dropZone')
+const fileInput = document.getElementById('fileInput')
+
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault(); dropZone.classList.add('dragging')
+})
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('dragging')
+})
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragging')
+  const f = e.dataTransfer.files[0]
+  if (f) {
+    const validationError = validateFile(f)
+    if (validationError) {
+      document.getElementById('errorBox').innerHTML =
+        `<div class="error-box">⚠️ ${validationError}</div>`
+      return
+    }
+    processFile(f)
+  }
+})
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) {
+    const file = e.target.files[0]
+    const validationError = validateFile(file)
+    if (validationError) {
+      document.getElementById('errorBox').innerHTML =
+        `<div class="error-box">⚠️ ${validationError}</div>`
+      return
+    }
+    processFile(file)
+  }
+})
+
+// ========================
+// ANALYZE
+// ========================
+async function processFile(file) {
+  document.getElementById('errorBox').innerHTML = ''
+  document.getElementById('progressSection').style.display = 'block'
+  document.getElementById('resultsSection').style.display = 'none'
+  document.getElementById('liveFeed').innerHTML = ''
+  setProgress(0, 'Starting analysis...', file.name)
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const res = await fetch(`${API}/analyze/stream`, {
+      method: 'POST',
+      body: formData
+    })
+
+    if (!res.ok) {
+      showError(`Server error: ${res.status}`)
+      return
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    const stageLabels = {
+      'loading': 'File loaded',
+      'preprocessing': 'Preprocessing data',
+      'sequencing': 'Creating sequences',
+      'transformer': 'Transformer V3 analyzing',
+      'transformer_done': 'Transformer complete',
+      'mlp': 'MLP Autoencoder analyzing',
+      'mlp_done': 'MLP complete',
+      'robust': 'Robust Transformer analyzing',
+      'robust_done': 'Robust model complete',
+      'ensemble': 'Computing ensemble',
+      'dna': 'Extracting threat DNA',
+      'complete': 'Analysis complete!'
+    }
+
+    const stageColors = {
+      'transformer': '#4f6ef7',
+      'transformer_done': '#4f6ef7',
+      'mlp': '#7c3aed',
+      'mlp_done': '#7c3aed',
+      'robust': '#06b6d4',
+      'robust_done': '#06b6d4',
+      'ensemble': '#10b981',
+      'dna': '#f97316',
+      'complete': '#10b981'
+    }
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop()
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        try {
+          const data = JSON.parse(line.slice(6))
+
+          if (data.stage === 'error') {
+            showError(data.message)
+            return
+          }
+
+          setProgress(
+            data.progress,
+            stageLabels[data.stage] || data.message,
+            data.message
+          )
+
+          if (stageColors[data.stage]) {
+            addFeed(data.message, stageColors[data.stage])
+          }
+
+          if (data.stage === 'loading' && data.sampled) {
+            document.getElementById('errorBox').innerHTML = `
+              <div style="background:rgba(234,179,8,0.1);
+                   border:1px solid rgba(234,179,8,0.3);
+                   border-radius:12px;padding:0.75rem 1rem;
+                   font-size:0.82rem;color:#facc15;
+                   margin-top:0.75rem">
+                ⚠️ Large file — sampled to
+                ${data.rows?.toLocaleString()} rows
+                from ${data.actual_rows?.toLocaleString()}.
+                All attacks preserved.
+              </div>`
+          }
+
+          if (data.stage === 'complete') {
+            await sleep(300)
+            showResults(data.results)
+          }
+
+        } catch(e) {
+          // Skip malformed chunks
+        }
+      }
+    }
+
+  } catch(e) {
+    console.error('Stream error:', e.message)
+    showError('Cannot connect to STRIDE backend. Make sure it is running on port 8000.')
+    document.getElementById('progressSection').style.display = 'none'
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+
+function setProgress(pct, label, sub) {
+  document.getElementById('progressFill').style.width = pct + '%'
+  document.getElementById('progressPct').textContent = pct + '%'
+  document.getElementById('progressLabel').textContent = label
+  document.getElementById('progressSub').textContent = sub
+}
+
+function addFeed(msg, color) {
+  const feed = document.getElementById('liveFeed')
+  const div = document.createElement('div')
+  div.className = 'live-item'
+  div.innerHTML = `<div class="live-dot" style="background:${color}"></div><span>${msg}</span>`
+  feed.insertBefore(div, feed.firstChild)
+  if (feed.children.length > 4) feed.removeChild(feed.lastChild)
+}
+
+function showError(msg) {
+  document.getElementById('errorBox').innerHTML = `<div class="error-box">⚠️ ${msg}</div>`
+  document.getElementById('progressSection').style.display = 'none'
+}
+
+// ========================
+// SHOW RESULTS
+// ========================
+function showResults(d) {
+  document.getElementById('progressSection').style.display = 'none'
+  document.getElementById('resultsSection').style.display = 'block'
+  lastScanResults = d
+
+  // Trigger alerts based on results
+  const attackRate = d.attack_rate || 0
+  const maxScore = d.max_ensemble_score || 0
+  const nAttacks = d.attack_sequences || 0
+
+  if (maxScore > 0.9 || attackRate > 5) {
+    sendAlert(
+      '🚨 CRITICAL THREAT DETECTED',
+      `${nAttacks} attack(s) found in ${d.filename}. Max score: ${maxScore}`,
+      'critical'
+    )
+
+  } else if (nAttacks > 0) {
+    sendAlert(
+      '⚠️ Attacks Detected',
+      `${nAttacks} suspicious sequence(s) in ${d.filename}`,
+      'attack'
+    )
+  } else {
+    sendAlert(
+      '✅ Scan Complete',
+      `No attacks detected in ${d.filename}`,
+      'success'
+    )
+  }
+
+  currentScanId = d.scan_id
+  document.getElementById('scanFilename').textContent = d.filename
+
+  document.getElementById('rAttacks').textContent = d.attack_sequences.toLocaleString()
+  document.getElementById('rAttackRate').textContent = `${d.attack_rate}% attack rate`
+  document.getElementById('rBenign').textContent = d.benign_sequences.toLocaleString()
+  document.getElementById('rTotal').textContent = `${d.total_sequences.toLocaleString()} total`
+  document.getElementById('rMaxScore').textContent = d.max_ensemble_score
+  document.getElementById('rAvgScore').textContent = `Avg: ${d.avg_ensemble_score}`
+
+  const ms = d.model_scores
+  setModel('mT', 'mTBar', ms.transformer)
+  setModel('mM', 'mMBar', ms.mlp)
+  setModel('mR', 'mRBar', ms.robust)
+  setModel('mE', 'mEBar', ms.ensemble)
+
+  buildHist(d.score_distribution)
+  buildPie(d.attack_sequences, d.benign_sequences)
+  buildTimeline(d.timeline)
+  buildBreakdown(d.attack_breakdown)
+  buildTable(d.top_suspicious)
+
+  document.getElementById('resultsSection').scrollIntoView({ behavior:'smooth' })
+}
+
+function setModel(id, barId, score) {
+  document.getElementById(id).textContent = score
+  setTimeout(() => {
+    document.getElementById(barId).style.width = (score * 100) + '%'
+  }, 100)
+}
+
+// ========================
+// CHARTS
+// ========================
+function buildHist(dist) {
+  if (charts.hist) charts.hist.destroy()
+  const ctx = document.getElementById('histChart').getContext('2d')
+  charts.hist = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dist.bins.slice(0,-1).map(b => b.toFixed(2)),
+      datasets: [{
+        data: dist.counts,
+        backgroundColor: dist.bins.slice(0,-1).map(b =>
+          b > 0.5 ? 'rgba(239,68,68,0.7)' :
+          b > 0.3 ? 'rgba(249,115,22,0.6)' :
+          'rgba(79,110,247,0.5)'),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display:false } },
+      scales: {
+        x: { ticks:{ color:'#64748b', font:{size:9} }, grid:{ color:'rgba(30,45,74,0.5)' } },
+        y: { ticks:{ color:'#64748b', font:{size:9} }, grid:{ color:'rgba(30,45,74,0.5)' } }
+      }
+    }
+  })
+}
+
+function buildPie(attacks, benign) {
+  if (charts.pie) charts.pie.destroy()
+  const ctx = document.getElementById('pieChart').getContext('2d')
+  charts.pie = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Benign', 'Attack'],
+      datasets: [{
+        data: [benign, attacks],
+        backgroundColor: ['rgba(16,185,129,0.8)', 'rgba(239,68,68,0.8)'],
+        borderColor: ['#10b981', '#ef4444'],
+        borderWidth: 2, hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true, cutout: '65%',
+      plugins: { legend: { labels: { color:'#64748b', font:{size:11} } } }
+    }
+  })
+}
+
+function buildTimeline(timeline) {
+  if (charts.timeline) charts.timeline.destroy()
+  const ctx = document.getElementById('timelineChart').getContext('2d')
+  charts.timeline = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: timeline.map(p => p.x),
+      datasets: [
+        {
+          data: timeline.map(p => p.y),
+          borderColor: '#4f6ef7',
+          backgroundColor: 'rgba(79,110,247,0.05)',
+          borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.4
+        },
+        {
+          data: timeline.map(() => 0.5),
+          borderColor: 'rgba(239,68,68,0.4)',
+          borderWidth: 1, borderDash: [4,4],
+          pointRadius: 0, fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend:{ display:false } },
+      scales: {
+        x: { ticks:{ color:'#64748b', font:{size:9}, maxTicksLimit:10 }, grid:{ color:'rgba(30,45,74,0.5)' } },
+        y: { min:0, max:1, ticks:{ color:'#64748b', font:{size:9} }, grid:{ color:'rgba(30,45,74,0.5)' } }
+      }
+    }
+  })
+}
+
+function buildBreakdown(breakdown) {
+  const card = document.getElementById('breakdownCard')
+  if (!breakdown || Object.keys(breakdown).length === 0) {
+    card.innerHTML = `<div style="color:var(--text2);font-size:0.85rem">Upload a labeled CSV to see per-attack breakdown.</div>`
+    return
+  }
+  const entries = Object.entries(breakdown)
+    .filter(([k]) => k !== 'BENIGN')
+    .sort((a,b) => b[1].detection_rate - a[1].detection_rate)
+
+  card.innerHTML = entries.map(([name, stats]) => {
+    const r = stats.detection_rate
+    const color = r >= 70 ? '#10b981' : r >= 40 ? '#eab308' : '#ef4444'
+    return `
+      <div class="breakdown-row">
+        <div class="breakdown-name">${name}</div>
+        <div class="breakdown-bar-bg">
+          <div class="breakdown-bar-fill" style="width:${r}%;background:${color}"></div>
+        </div>
+        <div class="breakdown-pct" style="color:${color}">${r}%</div>
+        <div class="breakdown-count">${stats.count} seqs</div>
+      </div>`
+  }).join('')
+}
+
+function buildTable(rows) {
+  const tbody = document.getElementById('resultsTable')
+  detectionIds = []
+  window.allTableRows = rows // Store for filtering
+
+  renderTable(rows)
+}
+
+function renderTable(rows) {
+  const tbody = document.getElementById('resultsTable')
+  detectionIds = []
+
+  tbody.innerHTML = rows.map((r, idx) => {
+    detectionIds.push(idx)
+    const sc = r.ensemble_score > 0.7 ? '#ef4444' :
+      r.ensemble_score > 0.4 ? '#f97316' : '#10b981'
+    return `
+      <tr id="row-${idx}" style="cursor:pointer"
+          onclick="handleRowClick(event, ${idx})"
+          onmouseover="this.style.background='rgba(79,110,247,0.08)'"
+          onmouseout="this.style.background=''">
+        <td style="color:var(--text2);font-weight:600">#${r.sequence}</td>
+        <td>
+          <div class="score-cell">
+            <div class="score-bar-sm">
+              <div class="score-bar-sm-fill" style="width:${r.transformer_score*100}%;background:var(--accent)"></div>
+            </div>${r.transformer_score}
+          </div>
+        </td>
+        <td>
+          <div class="score-cell">
+            <div class="score-bar-sm">
+              <div class="score-bar-sm-fill" style="width:${r.mlp_score*100}%;background:var(--accent2)"></div>
+            </div>${r.mlp_score}
+          </div>
+        </td>
+        <td>
+          <div class="score-cell">
+            <div class="score-bar-sm">
+              <div class="score-bar-sm-fill" style="width:${r.robust_score*100}%;background:var(--accent3)"></div>
+            </div>${r.robust_score}
+          </div>
+        </td>
+        <td style="color:${sc};font-weight:700">${r.ensemble_score}</td>
+        <td><span class="risk risk-${r.risk_level}">${r.risk_level}</span></td>
+        <td><span class="risk pred-${r.prediction}">${r.prediction}</span></td>
+        <td style="color:var(--text2);font-size:0.8rem">${r.attack_type || '—'}</td>
+        <td id="fb-${idx}">
+          <div style="display:flex;gap:4px">
+            <button class="btn-sm btn-confirm" onclick="giveFeedback(${idx}, 'confirmed_attack')" title="Confirm attack">✓</button>
+            <button class="btn-sm btn-reject" onclick="giveFeedback(${idx}, 'false_positive')" title="False positive">✗</button>
+            <button class="btn-sm btn-benign" onclick="giveFeedback(${idx}, 'confirmed_benign')" title="Mark benign">~</button>
+          </div>
+        </td>
+      </tr>`
+  }).join('')
+}
+
+// ========================
+// FEEDBACK
+// ========================
+async function giveFeedback(rowIdx, feedbackType) {
+  const fbCell = document.getElementById(`fb-${rowIdx}`)
+
+  try {
+    const res = await fetch(`${API}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        detection_id: rowIdx + 1,
+        feedback: feedbackType,
+        notes: ''
+      })
+    })
+    const data = await res.json()
+
+    const labels = {
+      'confirmed_attack': '✓ Confirmed',
+      'false_positive': '✗ False +',
+      'confirmed_benign': '~ Benign'
+    }
+
+    fbCell.innerHTML = `<span class="feedback-done">${labels[feedbackType]}</span>`
+
+    // Show toast
+    showToast(`Feedback saved — model will evolve. Total feedback: ${data.total_feedback}`)
+
+  } catch(e) {
+    console.error('Feedback error:', e)
+  }
+}
+
+function showToast(msg) {
+  const toast = document.createElement('div')
+  toast.style.cssText = `
+    position:fixed; bottom:2rem; right:2rem; z-index:1000;
+    background:var(--bg3); border:1px solid var(--border);
+    border-radius:12px; padding:1rem 1.5rem;
+    font-size:0.85rem; color:var(--green);
+    box-shadow:0 8px 30px rgba(0,0,0,0.4);
+    animation:fadeIn 0.3s ease;
+  `
+  toast.textContent = '✓ ' + msg
+  document.body.appendChild(toast)
+  setTimeout(() => toast.remove(), 3000)
+}
+
+// ========================
+// HISTORY PAGE
+// ========================
+async function loadHistory() {
+  try {
+    const res = await fetch(`${API}/history`)
+    const data = await res.json()
+
+    document.getElementById('hTotalScans').textContent = data.total_scans
+    document.getElementById('hTotalAttacks').textContent = data.total_attacks_detected.toLocaleString()
+    document.getElementById('hTotalFlows').textContent = data.total_flows_analyzed.toLocaleString()
+    document.getElementById('hAvgRate').textContent = data.avg_attack_rate + '%'
+
+    // Feedback stats
+    const fb = data.feedback_stats
+    const totalFb = Object.values(fb).reduce((a,b) => a+b, 0)
+    const fbCard = document.getElementById('feedbackCard')
+    // Get evolution status
+    let evoStats = null
+    try {
+      const evoRes = await fetch(`${API}/evolution`)
+      evoStats = await evoRes.json()
+    } catch(e) {}
+
+    if (totalFb === 0) {
+      fbCard.innerHTML = `
+        <div style="color:var(--text2);font-size:0.85rem">
+          No feedback yet. Confirm or reject detections
+          on the Analyze page to help the model evolve.
+        </div>
+        <div style="margin-top:1rem;padding:0.75rem 1rem;
+             background:var(--bg3);border-radius:10px;
+             font-size:0.8rem;color:var(--text2)">
+          💡 Give ${evoStats ? evoStats.feedback_until_evolution : 10}
+          more feedback items to trigger first evolution
+        </div>`
+    } else {
+      const isEvolving = evoStats && evoStats.is_evolving
+      const evoCount = evoStats ? evoStats.evolution_count : 0
+      const untilNext = evoStats ?
+        evoStats.feedback_until_evolution : 0
+      const precision = evoStats &&
+        evoStats.precision_from_feedback !== null ?
+        (evoStats.precision_from_feedback * 100).toFixed(1) + '%' :
+        'N/A'
+
+      fbCard.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);
+             gap:1rem;margin-bottom:1.5rem">
+          <div class="hstat-card">
+            <div class="hstat-val" style="color:var(--green)">
+              ${totalFb}
+            </div>
+            <div class="hstat-label">Total Feedback</div>
+          </div>
+          <div class="hstat-card">
+            <div class="hstat-val" style="color:var(--accent)">
+              ${evoCount}
+            </div>
+            <div class="hstat-label">Evolutions Run</div>
+          </div>
+          <div class="hstat-card">
+            <div class="hstat-val" style="color:var(--accent3)">
+              ${precision}
+            </div>
+            <div class="hstat-label">Feedback Precision</div>
+          </div>
+          <div class="hstat-card">
+            <div class="hstat-val"
+                 style="color:${isEvolving ? '#f97316' : untilNext === 0 ? '#10b981' : '#64748b'}">
+              ${isEvolving ? '⚡ Active' :
+                untilNext === 0 ? '✓ Ready' :
+                untilNext + ' more'}
+            </div>
+            <div class="hstat-label">Next Evolution</div>
+          </div>
+        </div>
+
+        ${isEvolving ? `
+          <div style="background:rgba(249,115,22,0.1);
+               border:1px solid rgba(249,115,22,0.3);
+               border-radius:12px;padding:1rem 1.25rem;
+               margin-bottom:1rem;font-size:0.85rem;
+               color:#fb923c;display:flex;
+               align-items:center;gap:10px">
+            <span style="font-size:1.2rem">⚡</span>
+            <span>Model is currently evolving —
+            retraining on your feedback...</span>
+          </div>` : ''}
+
+        ${evoStats && evoStats.evolution_history &&
+          evoStats.evolution_history.length > 0 ? `
+          <div style="font-size:0.8rem;color:var(--text2);
+               margin-bottom:0.75rem;font-weight:600;
+               text-transform:uppercase;letter-spacing:1px">
+            Evolution History
+          </div>
+          ${evoStats.evolution_history.map(e => `
+            <div class="feedback-row">
+              <span style="font-size:0.82rem;color:var(--text3)">
+                ${new Date(e.timestamp).toLocaleString()}
+              </span>
+              <span style="font-size:0.8rem;color:var(--text2)">
+                ${e.notes || '—'}
+              </span>
+              <span style="font-size:0.82rem;
+                   font-weight:700;color:var(--accent)">
+                P: ${e.precision}
+              </span>
+            </div>`).join('')}
+        ` : `
+          <div style="font-size:0.85rem;color:var(--text2)">
+            ${Object.entries(fb).map(([k,v]) => `
+              <div class="feedback-row">
+                <span style="color:var(--text3)">
+                  ${k.replace(/_/g,' ')}
+                </span>
+                <span style="font-weight:700;
+                     color:var(--accent)">${v}</span>
+              </div>`).join('')}
+          </div>`}
+      `
+    }
+
+    // Scan list
+    const list = document.getElementById('scanList')
+    if (data.scans.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📂</div>
+          <div class="empty-title">No scans yet</div>
+          <div class="empty-sub">Upload a CSV file to start</div>
+        </div>`
+      return
+    }
+
+    list.innerHTML = data.scans.map(s => {
+      const rate = s.attack_rate
+      const rateColor = rate > 10 ? '#ef4444' : rate > 2 ? '#f97316' : '#10b981'
+      const date = new Date(s.timestamp).toLocaleString()
+      return `
+        <div class="scan-item">
+          <div class="scan-icon">📁</div>
+          <div class="scan-info">
+            <div class="scan-filename">${s.filename}</div>
+            <div class="scan-meta">${date} · ${s.total_sequences.toLocaleString()} sequences</div>
+          </div>
+          <div class="scan-stats">
+            <div class="scan-stat">
+              <div class="scan-stat-val" style="color:#ef4444">${s.attack_sequences}</div>
+              <div class="scan-stat-label">Attacks</div>
+            </div>
+            <div class="scan-stat">
+              <div class="scan-stat-val" style="color:#10b981">${s.benign_sequences.toLocaleString()}</div>
+              <div class="scan-stat-label">Benign</div>
+            </div>
+          </div>
+          <div class="scan-rate" style="color:${rateColor};background:${rateColor}22;border:1px solid ${rateColor}44">
+            ${rate}%
+          </div>
+        </div>`
+    }).join('')
+
+  } catch(e) {
+    console.error('History error:', e)
+  }
+}
+
+// ========================
+// DNA PAGE
+// ========================
+async function loadDNA() {
+  try {
+    const res = await fetch(`${API}/dna`)
+    const data = await res.json()
+
+    document.getElementById('dnaTotal').textContent = data.total_signatures
+
+    const list = document.getElementById('dnaList')
+    if (data.library.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🧬</div>
+          <div class="empty-title">No DNA signatures yet</div>
+          <div class="empty-sub">Analyze traffic to build the threat library</div>
+        </div>`
+      return
+    }
+
+    list.innerHTML = data.library.map(d => `
+      <div class="dna-card">
+        <div class="dna-hash">${d.dna_hash}</div>
+        <div class="dna-info">
+          <div class="dna-type">${d.attack_type}</div>
+          <div class="dna-meta">
+            First seen: ${new Date(d.first_seen).toLocaleDateString()} ·
+            Last seen: ${new Date(d.last_seen).toLocaleDateString()}
+          </div>
+        </div>
+        <div class="dna-scores">
+          <div class="dna-score">
+            <div class="dna-score-val">${d.avg_transformer_score.toFixed(3)}</div>
+            <div class="dna-score-label">Transformer</div>
+          </div>
+          <div class="dna-score">
+            <div class="dna-score-val">${d.avg_mlp_score.toFixed(3)}</div>
+            <div class="dna-score-label">MLP</div>
+          </div>
+          <div class="dna-score">
+            <div class="dna-score-val">${d.avg_ensemble_score.toFixed(3)}</div>
+            <div class="dna-score-label">Ensemble</div>
+          </div>
+        </div>
+        <div class="dna-count">${d.occurrence_count}x</div>
+      </div>`
+    ).join('')
+
+  } catch(e) {
+    console.error('DNA error:', e)
+  }
+}
+
+// ========================
+// ALERT NOTIFICATIONS
+// ========================
+let notificationsEnabled = false
+
+async function requestNotifications() {
+  if ('Notification' in window) {
+    const permission = await Notification.requestPermission()
+    notificationsEnabled = permission === 'granted'
+  }
+}
+
+function sendAlert(title, body, type='info') {
+  // Browser notification
+  if (notificationsEnabled && document.hidden) {
+    const icons = {
+      'critical': '🚨',
+      'attack': '⚠️',
+      'info': 'ℹ️'
+    }
+    new Notification(`${icons[type]} STRIDE — ${title}`, {
+      body: body,
+      icon: '/favicon.ico'
+    })
+  }
+
+  // In-app toast alert
+  const colors = {
+    'critical': '#ef4444',
+    'attack': '#f97316',
+    'info': '#4f6ef7',
+    'success': '#10b981'
+  }
+  const color = colors[type] || colors.info
+
+  const toast = document.createElement('div')
+  toast.style.cssText = `
+    position:fixed; bottom:2rem; right:2rem;
+    z-index:9999; max-width:380px;
+    background:var(--bg3);
+    border:1px solid ${color}44;
+    border-left:3px solid ${color};
+    border-radius:12px; padding:1rem 1.25rem;
+    font-size:0.85rem; color:var(--text);
+    box-shadow:0 8px 30px rgba(0,0,0,0.5);
+    animation:fadeIn 0.3s ease;
+    cursor:pointer;
+  `
+  toast.innerHTML = `
+    <div style="font-weight:700;color:${color};
+         margin-bottom:4px">${title}</div>
+    <div style="color:var(--text2);font-size:0.8rem">
+      ${body}
+    </div>`
+  toast.onclick = () => toast.remove()
+  document.body.appendChild(toast)
+  setTimeout(() => {
+    if (toast.parentNode) toast.remove()
+  }, 6000)
+}
+
+// ========================
+// API STATUS
+// ========================
+async function checkAPI() {
+  try {
+    const r = await fetch(`${API}/health`)
+    const d = await r.json()
+    if (d.status === 'online') {
+      document.getElementById('apiStatus').textContent = 'API Online'
+    }
+  } catch {
+    const el = document.getElementById('apiStatus')
+    el.textContent = 'API Offline'
+    el.style.cssText = 'background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);font-size:11px;padding:4px 12px;border-radius:20px;'
+  }
+}
+
+async function loadIntelligence() {
+  try {
+    const res = await fetch(`${API}/intelligence`)
+    const data = await res.json()
+
+    if (data.error) { console.error(data.error); return }
+
+    // Threat level
+    const levelColors = {
+      'CRITICAL': '#ef4444', 'HIGH': '#f97316',
+      'MEDIUM': '#eab308', 'LOW': '#10b981'
+    }
+    const color = levelColors[data.threat_level] || '#10b981'
+
+    const badge = document.getElementById('threatLevelBadge')
+    const sigs = document.getElementById('iTotalSigs')
+    const attacks = document.getElementById('iTotalAttacks')
+    const status = document.getElementById('iModelStatus')
+
+    if (badge) badge.innerHTML = `<span style="color:${color}">${data.threat_level}</span>`
+    if (sigs) sigs.textContent = data.total_signatures
+    if (attacks) attacks.textContent = data.total_attacks_detected
+    if (status) status.textContent = data.model_status === 'evolving' ? '🟢 Evolving' : '⚪ Baseline'
+
+    // DNA Alerts
+    const alertsCard = document.getElementById('dnaAlertsCard')
+    if (alertsCard) {
+      if (data.total_signatures === 0) {
+        alertsCard.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🧬</div>
+            <div class="empty-title">No DNA matches yet</div>
+            <div class="empty-sub">Analyze multiple files to detect repeat threat actors</div>
+          </div>`
+      } else {
+        alertsCard.innerHTML = `
+          <div class="alert-card">
+            <div class="alert-icon">🧬</div>
+            <div class="alert-body">
+              <div class="alert-title">${data.total_signatures} DNA Signatures in Library</div>
+              <div class="alert-sub">
+                Top attack type: <strong>${data.top_attack_type}</strong> ·
+                Total occurrences: <strong>${data.total_attacks_detected}</strong> ·
+                Attack rate: <strong>${data.recent_attack_rate}%</strong>
+              </div>
+            </div>
+          </div>`
+      }
+    }
+
+    // Campaigns
+    const campaignsCard = document.getElementById('campaignsCard')
+    if (campaignsCard) {
+      if (!data.campaigns || data.campaigns.length === 0) {
+        campaignsCard.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📊</div>
+            <div class="empty-title">No campaigns yet</div>
+            <div class="empty-sub">Campaigns appear when multiple attacks share signatures</div>
+          </div>`
+      } else {
+        campaignsCard.innerHTML = data.campaigns.map(c => `
+          <div class="campaign-card">
+            <div>
+              <div class="campaign-type">${c.attack_type}</div>
+              <div class="campaign-meta">
+                First seen: ${new Date(c.first_seen).toLocaleDateString()} ·
+                Last seen: ${new Date(c.last_seen).toLocaleDateString()}
+              </div>
+            </div>
+            <div class="campaign-stats">
+              <div class="campaign-stat">
+                <div class="campaign-stat-val">${c.signature_count}</div>
+                <div class="campaign-stat-label">Signatures</div>
+              </div>
+              <div class="campaign-stat">
+                <div class="campaign-stat-val">${c.total_occurrences}</div>
+                <div class="campaign-stat-label">Occurrences</div>
+              </div>
+              <div class="campaign-stat">
+                <div class="campaign-stat-val">${parseFloat(c.avg_score).toFixed(3)}</div>
+                <div class="campaign-stat-label">Avg Score</div>
+              </div>
+            </div>
+          </div>`).join('')
+      }
+    }
+
+    // Trends chart
+    if (data.recent_trends && data.recent_trends.length > 0) {
+      if (charts.trends) charts.trends.destroy()
+      const tCtx = document.getElementById('trendsChart')
+      if (tCtx) {
+        const trends = [...data.recent_trends].reverse()
+        charts.trends = new Chart(tCtx.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: trends.map(t => t.date),
+            datasets: [{
+              label: 'Attack Rate %',
+              data: trends.map(t => t.avg_rate),
+              borderColor: '#ef4444',
+              backgroundColor: 'rgba(239,68,68,0.05)',
+              borderWidth: 2, pointRadius: 4,
+              fill: true, tension: 0.4
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { labels: { color:'#64748b', font:{size:10} } } },
+            scales: {
+              x: { ticks:{ color:'#64748b', font:{size:9} }, grid:{ color:'rgba(30,45,74,0.5)' } },
+              y: { ticks:{ color:'#64748b', font:{size:9} }, grid:{ color:'rgba(30,45,74,0.5)' } }
+            }
+          }
+        })
+      }
+    }
+
+  } catch(e) {
+    console.error('Intelligence error:', e)
+  }
+}
+// ========================
+// FEDERATION PAGE
+// ========================
+async function loadFederation() {
+  try {
+    const res = await fetch(`${API}/federation/status`)
+    const data = await res.json()
+
+    if (data.error) { console.error(data.error); return }
+
+    // Status cards
+    document.getElementById('fedOrgs').textContent =
+      data.n_organizations
+    document.getElementById('fedRounds').textContent =
+      data.total_rounds
+    document.getElementById('fedStatus').textContent =
+      data.is_running ? '⚡ Running' :
+      data.global_model_exists ? '✓ Active' : '○ Ready'
+
+    // Organizations
+    const orgColors = ['#4f6ef7', '#10b981', '#f97316']
+    const orgIcons = ['🏦', '🏛️', '📡']
+    const orgsList = document.getElementById('orgsList')
+    orgsList.innerHTML = data.organizations.map((org, i) => `
+      <div class="org-card">
+        <div class="org-icon"
+             style="background:${orgColors[i]}22;
+                    border:1px solid ${orgColors[i]}44">
+          ${orgIcons[i]}
+        </div>
+        <div class="org-info">
+          <div class="org-name">${org.name}</div>
+          <div class="org-desc">${org.description}</div>
+        </div>
+        <div class="org-stats">
+          <div class="org-stat">
+            <div class="org-stat-val"
+                 style="color:${orgColors[i]}">
+              ${(org.data_size/1000).toFixed(0)}K
+            </div>
+            <div class="org-stat-label">Data Size</div>
+          </div>
+          <div class="org-stat">
+            <div class="org-stat-val">
+              ${org.auc_before !== null ?
+                org.auc_before.toFixed(4) : '—'}
+            </div>
+            <div class="org-stat-label">AUC Before</div>
+          </div>
+          <div class="org-stat">
+            <div class="org-stat-val"
+                 style="color:${org.auc_after !== null &&
+                   org.auc_after > org.auc_before ?
+                   '#10b981' : 'inherit'}">
+              ${org.auc_after !== null ?
+                org.auc_after.toFixed(4) : '—'}
+            </div>
+            <div class="org-stat-label">AUC After</div>
+          </div>
+        </div>
+      </div>`).join('')
+
+    // History
+    if (data.history && data.history.length > 0) {
+      const fedHistory = document.getElementById('fedHistory')
+      fedHistory.innerHTML = data.history.map(h => `
+        <div class="fed-result-card">
+          <div style="display:flex;justify-content:space-between;
+               align-items:center;margin-bottom:1rem">
+            <div>
+              <div style="font-size:0.9rem;font-weight:700">
+                Round ${h.round_number}
+              </div>
+              <div style="font-size:0.75rem;color:var(--text2)">
+                ${new Date(h.timestamp).toLocaleString()}
+              </div>
+            </div>
+            <span class="fed-improvement ${h.improvement >= 0 ? 'positive' : 'negative'}">
+              ${h.improvement >= 0 ? '+' : ''}${(h.improvement*100).toFixed(2)}% AUC
+            </span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem">
+            <div class="hstat-card">
+              <div class="hstat-val">${h.n_organizations}</div>
+              <div class="hstat-label">Organizations</div>
+            </div>
+            <div class="hstat-card">
+              <div class="hstat-val">${h.avg_auc_before.toFixed(4)}</div>
+              <div class="hstat-label">Avg AUC Before</div>
+            </div>
+            <div class="hstat-card">
+              <div class="hstat-val"
+                   style="color:${h.improvement >= 0 ? 'var(--green)' : 'var(--red)'}">
+                ${h.avg_auc_after.toFixed(4)}
+              </div>
+              <div class="hstat-label">Avg AUC After</div>
+            </div>
+          </div>
+          ${h.details && h.details.orgs ? `
+            <div style="margin-top:1rem">
+              ${h.details.orgs.map(org => `
+                <div style="display:flex;justify-content:space-between;
+                     padding:0.4rem 0;border-bottom:1px solid rgba(30,45,74,0.4);
+                     font-size:0.82rem">
+                  <span style="color:var(--text3)">${org.name}</span>
+                  <span style="color:var(--text2)">
+                    ${org.auc_before.toFixed(4)} →
+                    <span style="color:${org.improvement >= 0 ? 'var(--green)' : 'var(--red)'}">
+                      ${org.auc_after.toFixed(4)}
+                    </span>
+                    (${org.improvement >= 0 ? '+' : ''}${(org.improvement*100).toFixed(2)}%)
+                  </span>
+                </div>`).join('')}
+            </div>` : ''}
+        </div>`).join('')
+
+      // Show latest result prominently
+      const latest = data.history[0]
+      const fedResults = document.getElementById('fedResults')
+      fedResults.innerHTML = `
+        <div style="background:${latest.improvement >= 0 ?
+          'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)'};
+          border:1px solid ${latest.improvement >= 0 ?
+          'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'};
+          border-radius:16px;padding:1.5rem">
+          <div style="font-size:1rem;font-weight:700;
+               color:${latest.improvement >= 0 ? 'var(--green)' : 'var(--red)'};
+               margin-bottom:0.5rem">
+            ${latest.improvement >= 0 ?
+              '✓ Federation Improved Performance' :
+              '⚠ Federation Round Complete'}
+          </div>
+          <div style="font-size:0.85rem;color:var(--text3);line-height:1.7">
+            Average AUC across ${latest.n_organizations} organizations:
+            <strong>${latest.avg_auc_before.toFixed(4)}</strong> →
+            <strong style="color:${latest.improvement >= 0 ?
+              'var(--green)' : 'var(--red)'}">
+              ${latest.avg_auc_after.toFixed(4)}
+            </strong>
+            (${latest.improvement >= 0 ? '+' : ''}${(latest.improvement*100).toFixed(2)}% improvement)
+            <br>
+            Global model saved and distributed to all organizations.
+            Privacy preserved — no raw data was shared.
+          </div>
+        </div>`
+    }
+
+  } catch(e) {
+    console.error('Federation error:', e)
+  }
+}
+
+async function runFederation() {
+  const btn = document.getElementById('fedRunBtn')
+  const status = document.getElementById('fedRunStatus')
+
+  btn.disabled = true
+  btn.textContent = '⚡ Running...'
+  status.innerHTML = `
+    <div style="background:rgba(249,115,22,0.1);
+         border:1px solid rgba(249,115,22,0.3);
+         border-radius:12px;padding:1rem;
+         font-size:0.85rem;color:#fb923c">
+      ⚡ Federation round started. This takes 2-5 minutes.
+      Collecting weights from 3 organizations...
+    </div>`
+
+  try {
+    const res = await fetch(`${API}/federation/run`,
+      { method: 'POST' })
+    const data = await res.json()
+
+    if (data.error) {
+      status.innerHTML = `
+        <div class="error-box">⚠️ ${data.error}</div>`
+      btn.disabled = false
+      btn.textContent = '⚡ Run Federation Round'
+      return
+    }
+
+    // Poll for completion
+    let attempts = 0
+    const maxAttempts = 60
+    const poll = setInterval(async () => {
+      attempts++
+      try {
+        const sRes = await fetch(
+          `${API}/federation/status`)
+        const sData = await sRes.json()
+
+        if (!sData.is_running || attempts >= maxAttempts) {
+          clearInterval(poll)
+          btn.disabled = false
+          btn.textContent = '⚡ Run Federation Round'
+
+          if (sData.total_rounds > 0) {
+            status.innerHTML = `
+              <div style="background:rgba(16,185,129,0.1);
+                   border:1px solid rgba(16,185,129,0.3);
+                   border-radius:12px;padding:1rem;
+                   font-size:0.85rem;color:var(--green)">
+                ✓ Federation complete!
+                Refreshing results...
+              </div>`
+            await sleep(1000)
+            loadFederation()
+          }
+        } else {
+          status.innerHTML = `
+            <div style="background:rgba(249,115,22,0.1);
+                 border:1px solid rgba(249,115,22,0.3);
+                 border-radius:12px;padding:1rem;
+                 font-size:0.85rem;color:#fb923c">
+              ⚡ Running... (${attempts * 5}s elapsed)
+              Applying FedAvg across organizations...
+            </div>`
+        }
+      } catch(e) {
+        clearInterval(poll)
+        btn.disabled = false
+        btn.textContent = '⚡ Run Federation Round'
+      }
+    }, 5000)
+
+  } catch(e) {
+    status.innerHTML = `
+      <div class="error-box">⚠️ ${e.message}</div>`
+    btn.disabled = false
+    btn.textContent = '⚡ Run Federation Round'
+  }
+}
+// ========================
+// PDF EXPORT
+// ========================
+let lastScanResults = null
+
+async function exportPDF() {
+  if (!lastScanResults) {
+    showToast('Run an analysis first!')
+    return
+  }
+
+  const btn = document.getElementById('exportBtn')
+  btn.textContent = '⏳ Generating...'
+  btn.disabled = true
+
+  try {
+    const res = await fetch(`${API}/report/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scan_results: lastScanResults
+      })
+    })
+
+    if (!res.ok) {
+      throw new Error('Failed to generate report')
+    }
+
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `STRIDE_Report_${new Date()
+      .toISOString().slice(0,19)
+      .replace(/:/g,'-')}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    showToast('PDF report downloaded!')
+
+  } catch(e) {
+    showToast('Error generating PDF: ' + e.message)
+  } finally {
+    btn.textContent = '📄 Export PDF'
+    btn.disabled = false
+  }
+}
+async function loadSHAP(sequenceIdx) {
+  if (!lastScanResults) return
+
+  const panel = document.getElementById('shapPanel')
+  if (!panel) return
+  panel.innerHTML = `
+    <div style="text-align:center;padding:1rem;
+         color:var(--accent);font-size:0.85rem">
+      🔍 Analyzing feature importance...
+    </div>`
+
+  try {
+    const res = await fetch(`${API}/shap/explain`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        sequence_idx: sequenceIdx,
+        sequence_data: lastScanResults.results ?
+          lastScanResults.results[sequenceIdx] : null,
+        top_suspicious: lastScanResults.top_suspicious || []
+      })
+    })
+    const data = await res.json()
+    if (data.error) {
+      panel.innerHTML = `<div class="error-box">⚠️ ${data.error}</div>`
+      return
+    }
+
+    if (!data.shap_values || data.shap_values.length === 0) {
+      panel.innerHTML = `<div class="error-box">⚠️ No SHAP values returned</div>`
+      return
+    }
+    const maxVal = Math.max(
+      ...data.shap_values.map(s => s.importance))
+
+    panel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;
+           align-items:center;margin-bottom:1.25rem">
+        <div>
+          <div style="font-size:0.9rem;font-weight:700;
+               color:var(--text)">
+            Sequence #${data.sequence} — Feature Importance
+          </div>
+          <div style="font-size:0.8rem;color:var(--text2);
+               margin-top:4px">${data.explanation}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="risk pred-${data.prediction}">
+            ${data.prediction}
+          </span>
+          <span class="risk risk-${data.risk_level}">
+            ${data.risk_level}
+          </span>
+          <span style="font-size:1rem;font-weight:800;
+               color:var(--accent)">
+            ${data.ensemble_score}
+          </span>
+        </div>
+      </div>
+      <div style="font-size:0.7rem;color:var(--text2);
+           text-transform:uppercase;letter-spacing:1.5px;
+           margin-bottom:0.75rem;font-weight:600">
+        Top Features Driving This Detection
+      </div>
+      ${data.shap_values.map((s, i) => {
+        const pct = (s.importance / maxVal * 100).toFixed(1)
+        const barColor = i === 0 ? 'var(--red)' :
+          i < 3 ? 'var(--orange)' :
+          i < 6 ? 'var(--yellow)' : 'var(--accent)'
+        return `
+          <div class="shap-bar-container">
+            <div class="shap-feature">${s.feature}</div>
+            <div class="shap-bar-wrap">
+              <div class="shap-bar-fill"
+                   style="width:${pct}%;background:${barColor}">
+              </div>
+            </div>
+            <div class="shap-val">${s.shap_value.toFixed(4)}</div>
+          </div>`
+      }).join('')}
+      <div style="margin-top:1rem;font-size:0.75rem;
+           color:var(--text2);text-align:right">
+        Higher value = stronger contribution to detection
+      </div>`
+
+  } catch(e) {
+    panel.innerHTML = `<div class="error-box">⚠️ ${e.message}</div>`
+  }
+}
+function handleRowClick(event, idx) {
+  // Don't trigger if clicking feedback buttons
+  if (event.target.tagName === 'BUTTON' ||
+      event.target.closest('button')) return
+  loadSHAP(idx)
+  // Highlight selected row
+  document.querySelectorAll('tr').forEach(
+    r => r.style.outline = '')
+  document.getElementById(`row-${idx}`)
+    .style.outline = '1px solid var(--accent)'
+}
+// ========================
+// TABLE SORT & FILTER
+// ========================
+let sortColumn = 'ensemble_score'
+let sortDirection = 'desc'
+
+function sortTable(column) {
+  if (sortColumn === column) {
+    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortColumn = column
+    sortDirection = 'desc'
+  }
+
+  // Update sort indicators
+  document.querySelectorAll('[id^="sort-"]').forEach(
+    el => el.textContent = '')
+  const indicator = document.getElementById(
+    `sort-${column}`)
+  if (indicator) {
+    indicator.textContent = sortDirection === 'asc' ?
+      ' ↑' : ' ↓'
+  }
+
+  filterTable()
+}
+
+function filterTable() {
+  if (!window.allTableRows) return
+
+  const text = (document.getElementById(
+    'tableFilter')?.value || '').toLowerCase()
+  const risk = document.getElementById(
+    'riskFilter')?.value || ''
+  const pred = document.getElementById(
+    'predFilter')?.value || ''
+
+  let filtered = window.allTableRows.filter(r => {
+    const matchText = !text ||
+      (r.attack_type || '').toLowerCase().includes(text) ||
+      r.risk_level.toLowerCase().includes(text) ||
+      r.prediction.toLowerCase().includes(text) ||
+      String(r.sequence).includes(text)
+    const matchRisk = !risk || r.risk_level === risk
+    const matchPred = !pred || r.prediction === pred
+    return matchText && matchRisk && matchPred
+  })
+
+  // Sort
+  filtered.sort((a, b) => {
+    let va = a[sortColumn]
+    let vb = b[sortColumn]
+
+    // Risk level order
+    if (sortColumn === 'risk_level') {
+      const order = {
+        'CRITICAL': 4, 'HIGH': 3,
+        'MEDIUM': 2, 'LOW': 1}
+      va = order[va] || 0
+      vb = order[vb] || 0
+    }
+
+    if (typeof va === 'string') {
+      va = va.toLowerCase()
+      vb = vb.toLowerCase()
+    }
+
+    if (va < vb) return sortDirection === 'asc' ? -1 : 1
+    if (va > vb) return sortDirection === 'asc' ? 1 : -1
+    return 0
+  })
+
+  renderTable(filtered)
+}
+function resetTableFilters() {
+  const tf = document.getElementById('tableFilter')
+  const rf = document.getElementById('riskFilter')
+  const pf = document.getElementById('predFilter')
+  if (tf) tf.value = ''
+  if (rf) rf.value = ''
+  if (pf) pf.value = ''
+  sortColumn = 'ensemble_score'
+  sortDirection = 'desc'
+  document.querySelectorAll('[id^="sort-"]').forEach(
+    el => el.textContent = '')
+  if (window.allTableRows) renderTable(window.allTableRows)
+}
+// ========================
+// INPUT VALIDATION
+// ========================
+function validateFile(file) {
+  // Check extension
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    return 'Only CSV files are supported. Please upload a .csv file.'
+  }
+
+  // Check size (500MB max)
+  const maxSize = 500 * 1024 * 1024
+  if (file.size > maxSize) {
+    return `File too large (${(file.size/1024/1024).toFixed(1)}MB). Maximum is 500MB.`
+  }
+
+  // Check not empty
+  if (file.size < 100) {
+    return 'File is empty or too small.'
+  }
+
+  // Check MIME type
+  const validTypes = [
+    'text/csv', 'application/csv',
+    'text/plain', 'application/vnd.ms-excel', ''
+  ]
+  if (file.type && !validTypes.includes(file.type) &&
+      !file.name.endsWith('.csv')) {
+    return 'Invalid file type. Please upload a CSV file.'
+  }
+
+  return null
+}
+checkAPI()
+setInterval(checkAPI, 30000)
+</script>
+</body>
+</html>

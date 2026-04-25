@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STRIDE — Network Intrusion Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tsparticles-slim@2.12.0/tsparticles.slim.bundle.min.js"></script>
+<style>
+:root {
+  --navy:#07091a;--navy2:#0c0f24;--navy3:#111530;--navy4:#161c3d;
+  --blue:#2563eb;--blue2:#1d4ed8;--blue-soft:#3b82f6;--blue-glow:rgba(37,99,235,0.15);
+  --cyan:#06b6d4;--red:#ef4444;--orange:#f97316;--green:#10b981;--yellow:#f59e0b;
+  --text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --card:rgba(255,255,255,0.03);--card2:rgba(255,255,255,0.06);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(37,99,235,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,0.04) 1px,transparent 1px);background-size:64px 64px;pointer-events:none;z-index:0;}
+.orb{position:fixed;border-radius:50%;pointer-events:none;z-index:0;filter:blur(80px);}
+.orb-1{width:800px;height:800px;background:radial-gradient(circle,rgba(37,99,235,0.12) 0%,transparent 70%);top:-300px;left:-200px;}
+.orb-2{width:600px;height:600px;background:radial-gradient(circle,rgba(6,182,212,0.08) 0%,transparent 70%);bottom:-100px;right:-100px;}
+nav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 2.5rem;height:64px;background:rgba(7,9,26,0.9);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);}
+.nav-logo{display:flex;align-items:center;gap:10px;}
+.nav-logo-mark{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.nav-logo-text{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:white;letter-spacing:2px;}
+.nav-tabs{display:flex;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:3px;}
+.nav-tab{padding:5px 16px;font-size:0.8rem;font-weight:500;color:var(--text2);background:transparent;border:none;border-radius:8px;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+.nav-tab:hover{color:var(--text);}
+.nav-tab.active{background:var(--blue);color:white;box-shadow:0 0 20px rgba(37,99,235,0.3);}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.nav-pill{font-size:0.72rem;font-weight:500;padding:4px 12px;border-radius:20px;letter-spacing:0.5px;}
+.pill-blue{background:rgba(37,99,235,0.15);color:#60a5fa;border:1px solid rgba(37,99,235,0.3);}
+.pill-green{background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.3);display:flex;align-items:center;gap:6px;}
+.pill-green::before{content:'';width:5px;height:5px;background:#34d399;border-radius:50%;animation:pulse 2s infinite;}
+.notif-btn{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:0.78rem;color:var(--text2);cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+.notif-btn:hover{border-color:var(--border2);color:var(--text);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.page{display:none;position:relative;z-index:1;}
+.page.active{display:block;}
+.hero{padding:5rem 2.5rem 3rem;text-align:center;}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:0.72rem;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);margin-bottom:1.5rem;}
+.hero-eyebrow::before,.hero-eyebrow::after{content:'';width:24px;height:1px;background:var(--blue-soft);opacity:0.5;}
+.hero-title{font-family:'Syne',sans-serif;font-size:clamp(3rem,9vw,6.5rem);font-weight:800;line-height:0.95;letter-spacing:-2px;margin-bottom:1.5rem;color:white;}
+.hero-title span{color:var(--blue-soft);}
+.hero-desc{font-size:1rem;color:var(--text2);max-width:500px;margin:0 auto 2rem;line-height:1.7;font-weight:300;}
+.hero-tags{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:1.5rem;}
+.hero-tag{font-size:0.7rem;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:5px 14px;border:1px solid var(--border);border-radius:20px;background:var(--card);}
+.metric-strip{display:grid;grid-template-columns:repeat(4,1fr);max-width:800px;margin:0 auto 3rem;padding:0 2.5rem;border:1px solid var(--border);border-radius:16px;overflow:hidden;position:relative;z-index:1;}
+.metric-strip::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blue),transparent);}
+.metric-item{padding:1.5rem;text-align:center;background:var(--card);border-right:1px solid var(--border);transition:background 0.2s;}
+.metric-item:last-child{border-right:none;}
+.metric-item:hover{background:var(--card2);}
+.metric-value{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:700;color:var(--blue-soft);line-height:1;margin-bottom:4px;}
+.metric-label{font-size:0.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--text3);font-weight:500;}
+.upload-section{max-width:680px;margin:0 auto 3rem;padding:0 2.5rem;position:relative;z-index:1;}
+.upload-zone{background:var(--card);border:1.5px dashed var(--border2);border-radius:20px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:all 0.3s;position:relative;}
+.upload-zone:hover,.upload-zone.dragging{border-color:var(--blue);background:var(--blue-glow);}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.upload-icon{width:72px;height:72px;margin:0 auto 1.5rem;background:var(--navy3);border:1px solid var(--border2);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:1.75rem;}
+.upload-title{font-size:1.05rem;font-weight:500;color:var(--text);margin-bottom:6px;}
+.upload-sub{font-size:0.83rem;color:var(--text3);margin-bottom:1.5rem;}
+.btn-primary{display:inline-flex;align-items:center;gap:8px;padding:10px 24px;background:var(--blue);color:white;font-weight:500;font-size:0.875rem;border:none;border-radius:10px;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+.btn-primary:hover{background:var(--blue2);transform:translateY(-1px);box-shadow:0 8px 24px rgba(37,99,235,0.35);}
+.btn-sm{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;font-size:0.75rem;font-weight:500;border-radius:8px;cursor:pointer;border:none;transition:all 0.15s;font-family:'DM Sans',sans-serif;}
+.btn-ghost{background:var(--card);color:var(--text2);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text);}
+.btn-confirm{background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.25);}
+.btn-confirm:hover{background:rgba(16,185,129,0.2);}
+.btn-reject{background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.25);}
+.btn-reject:hover{background:rgba(239,68,68,0.2);}
+.btn-benign{background:rgba(37,99,235,0.1);color:#60a5fa;border:1px solid rgba(37,99,235,0.25);}
+.btn-benign:hover{background:rgba(37,99,235,0.2);}
+.progress-section{display:none;max-width:680px;margin:0 auto 2rem;padding:0 2.5rem;position:relative;z-index:1;}
+.progress-card{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:1.75rem;}
+.progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.progress-label{font-size:0.85rem;font-weight:500;color:var(--blue-soft);}
+.progress-pct{font-size:0.8rem;color:var(--text3);}
+.progress-track{height:3px;background:var(--navy4);border-radius:3px;overflow:hidden;margin-bottom:12px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan));border-radius:3px;transition:width 0.4s ease;width:0%;}
+.progress-sub{font-size:0.78rem;color:var(--text3);}
+.live-feed{max-height:80px;overflow:hidden;margin-top:12px;}
+.live-item{display:flex;align-items:center;gap:8px;font-size:0.73rem;color:var(--text3);padding:2px 0;font-family:'DM Mono',monospace;animation:fadeSlide 0.3s ease;}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.live-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.results-section{display:none;position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:0 2.5rem 6rem;}
+.section-hdr{display:flex;align-items:center;gap:16px;margin-bottom:1.25rem;}
+.section-hdr-label{font-size:0.65rem;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);white-space:nowrap;}
+.section-hdr-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border2),transparent);}
+.section-hdr-sub{font-size:0.72rem;color:var(--text3);white-space:nowrap;}
+.summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;}
+.summary-card{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;position:relative;overflow:hidden;transition:transform 0.2s,border-color 0.2s;}
+.summary-card:hover{transform:translateY(-2px);border-color:var(--border2);}
+.summary-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:16px 16px 0 0;}
+.summary-card.red::before{background:var(--red);}
+.summary-card.green::before{background:var(--green);}
+.summary-card.amber::before{background:var(--orange);}
+.s-icon{font-size:1.2rem;margin-bottom:12px;}
+.s-number{font-family:'Syne',sans-serif;font-size:3rem;font-weight:700;line-height:1;margin-bottom:6px;}
+.s-number.red{color:var(--red);}
+.s-number.green{color:var(--green);}
+.s-number.amber{color:var(--orange);}
+.s-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:2px;color:var(--text3);font-weight:500;}
+.s-sub{font-size:0.75rem;color:var(--text3);margin-top:4px;}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:2rem;}
+.chart-card{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;}
+.chart-label{font-size:0.65rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:1rem;}
+.timeline-card{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem;}
+.models-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;}
+.model-card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.25rem;transition:border-color 0.2s;}
+.model-card:hover{border-color:var(--border2);}
+.model-name{font-size:0.68rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);margin-bottom:10px;}
+.model-val{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:700;color:var(--blue-soft);margin-bottom:8px;}
+.model-bar-bg{height:2px;background:var(--navy4);border-radius:2px;overflow:hidden;}
+.model-bar-fill{height:100%;border-radius:2px;transition:width 1s ease;}
+.breakdown-card{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem;}
+.bd-row{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.bd-row:last-child{border-bottom:none;}
+.bd-name{font-size:0.82rem;min-width:200px;color:var(--text2);}
+.bd-track{flex:1;height:5px;background:var(--navy4);border-radius:3px;overflow:hidden;}
+.bd-fill{height:100%;border-radius:3px;transition:width 0.8s ease;}
+.bd-pct{font-size:0.78rem;font-weight:600;min-width:42px;text-align:right;}
+.bd-count{font-size:0.72rem;color:var(--text3);min-width:56px;text-align:right;}
+.shap-row{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.shap-row:last-child{border-bottom:none;}
+.shap-feat{font-size:0.75rem;color:var(--text2);min-width:190px;text-align:right;font-family:'DM Mono',monospace;}
+.shap-track{flex:1;height:6px;background:var(--navy4);border-radius:3px;overflow:hidden;}
+.shap-fill{height:100%;border-radius:3px;transition:width 0.8s ease;}
+.shap-val{font-size:0.72rem;font-weight:500;min-width:50px;text-align:left;color:var(--blue-soft);font-family:'DM Mono',monospace;}
+.table-wrap{background:var(--navy2);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.table-filters{display:flex;gap:8px;flex-wrap:wrap;padding:1rem 1.25rem;border-bottom:1px solid var(--border);background:var(--card);}
+.filter-input{flex:1;min-width:180px;background:var(--navy3);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text);font-size:0.82rem;outline:none;font-family:'DM Sans',sans-serif;transition:border-color 0.2s;}
+.filter-input:focus{border-color:var(--blue);}
+.filter-input::placeholder{color:var(--text3);}
+.filter-select{background:var(--navy3);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-size:0.82rem;outline:none;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.table-scroll{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+th{text-align:left;padding:10px 14px;font-size:0.65rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid var(--border);background:var(--card);cursor:pointer;white-space:nowrap;user-select:none;}
+th:hover{color:var(--text2);}
+td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.03);color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(37,99,235,0.03);}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:0.68rem;font-weight:600;letter-spacing:0.5px;}
+.badge-critical{background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.25);}
+.badge-high{background:rgba(249,115,22,0.12);color:#fb923c;border:1px solid rgba(249,115,22,0.25);}
+.badge-medium{background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.25);}
+.badge-low{background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.25);}
+.badge-attack{background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.25);}
+.badge-benign{background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.25);}
+.score-cell{display:flex;align-items:center;gap:7px;}
+.score-bar{width:50px;height:3px;background:var(--navy4);border-radius:2px;overflow:hidden;}
+.score-fill{height:100%;border-radius:2px;}
+.fb-done{font-size:0.72rem;color:#34d399;padding:3px 10px;background:rgba(16,185,129,0.1);border-radius:20px;border:1px solid rgba(16,185,129,0.25);}
+.page-section{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:2rem 2.5rem 6rem;}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;}
+.stat-card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.25rem;transition:all 0.2s;}
+.stat-card:hover{border-color:var(--border2);}
+.stat-val{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:700;color:var(--blue-soft);margin-bottom:4px;}
+.stat-lbl{font-size:0.68rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-weight:500;}
+.feedback-card{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem;}
+.fb-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.fb-row:last-child{border-bottom:none;}
+.scan-list{display:flex;flex-direction:column;gap:8px;}
+.scan-item{background:var(--navy2);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;transition:all 0.2s;}
+.scan-item:hover{background:var(--navy3);border-color:var(--border2);}
+.scan-icon{font-size:1.1rem;flex-shrink:0;opacity:0.7;}
+.scan-info{flex:1;}
+.scan-name{font-size:0.875rem;font-weight:500;color:var(--text);}
+.scan-meta{font-size:0.73rem;color:var(--text3);margin-top:2px;}
+.scan-stats{display:flex;gap:1rem;align-items:center;}
+.scan-stat{text-align:center;}
+.scan-stat-val{font-size:1rem;font-weight:600;}
+.scan-stat-lbl{font-size:0.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;}
+.scan-rate{font-size:0.75rem;padding:3px 10px;border-radius:20px;font-weight:600;}
+.dna-card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1.5rem;transition:all 0.2s;}
+.dna-card:hover{border-color:var(--border2);}
+.dna-hash{font-family:'DM Mono',monospace;font-size:0.78rem;color:var(--blue-soft);min-width:135px;background:rgba(37,99,235,0.08);padding:4px 10px;border-radius:7px;border:1px solid rgba(37,99,235,0.15);}
+.dna-info{flex:1;}
+.dna-type{font-size:0.875rem;font-weight:500;color:var(--text);}
+.dna-meta{font-size:0.72rem;color:var(--text3);margin-top:2px;}
+.dna-scores{display:flex;gap:1.25rem;}
+.dna-score{text-align:center;}
+.dna-score-val{font-size:0.875rem;font-weight:600;color:var(--cyan);font-family:'DM Mono',monospace;}
+.dna-score-lbl{font-size:0.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;}
+.dna-count{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:700;color:var(--orange);min-width:36px;text-align:center;}
+.threat-hero{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:2rem;display:flex;align-items:center;gap:2rem;margin-bottom:2rem;}
+.threat-level-badge{font-family:'Syne',sans-serif;font-size:2.5rem;font-weight:800;}
+.threat-level-label{font-size:0.62rem;text-transform:uppercase;letter-spacing:2.5px;color:var(--text3);margin-bottom:6px;}
+.alert-card{background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:flex-start;gap:1rem;}
+.alert-icon{font-size:1.25rem;flex-shrink:0;}
+.alert-body{flex:1;}
+.alert-title{font-size:0.875rem;font-weight:500;color:#f87171;margin-bottom:3px;}
+.alert-sub{font-size:0.78rem;color:var(--text3);line-height:1.5;}
+.campaign-card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1.5rem;transition:all 0.2s;}
+.campaign-card:hover{border-color:var(--border2);}
+.campaign-type{font-size:0.9rem;font-weight:500;color:var(--text);min-width:200px;}
+.campaign-meta{font-size:0.72rem;color:var(--text3);margin-top:2px;}
+.campaign-stats{display:flex;gap:1.5rem;margin-left:auto;}
+.campaign-stat{text-align:center;}
+.campaign-stat-val{font-size:1rem;font-weight:600;color:var(--blue-soft);}
+.campaign-stat-lbl{font-size:0.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;}
+.org-card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1.5rem;transition:all 0.2s;}
+.org-card:hover{border-color:var(--border2);}
+.org-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0;}
+.org-info{flex:1;}
+.org-name{font-size:0.9rem;font-weight:500;color:var(--text);}
+.org-desc{font-size:0.72rem;color:var(--text3);margin-top:2px;}
+.org-stats{display:flex;gap:1.5rem;}
+.org-stat{text-align:center;}
+.org-stat-val{font-size:1rem;font-weight:600;}
+.org-stat-lbl{font-size:0.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;}
+.fed-result-card{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1rem;}
+.fed-improvement{display:inline-block;padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;}
+.fed-improvement.pos{background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.25);}
+.fed-improvement.neg{background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.25);}
+.empty{text-align:center;padding:4rem 2rem;color:var(--text3);}
+.empty-icon{font-size:2.5rem;margin-bottom:1rem;opacity:0.5;}
+.empty-title{font-size:1rem;font-weight:500;color:var(--text2);margin-bottom:6px;}
+.empty-sub{font-size:0.83rem;}
+.error-box{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:12px;padding:1rem 1.25rem;font-size:0.83rem;color:#f87171;margin-top:1rem;}
+footer{position:relative;z-index:1;text-align:center;padding:2rem;border-top:1px solid var(--border);color:var(--text3);font-size:0.75rem;letter-spacing:0.5px;}
+@media(max-width:768px){
+  nav{padding:0 1rem;flex-wrap:wrap;gap:8px;}
+  .nav-tabs{overflow-x:auto;scrollbar-width:none;order:3;width:100%;}
+  .nav-tabs::-webkit-scrollbar{display:none;}
+  .hero{padding:2rem 1rem 1.5rem;}
+  .hero-title{letter-spacing:-1px;}
+  .metric-strip{grid-template-columns:repeat(2,1fr);margin:0 1rem 2rem;padding:0;}
+  .upload-section{padding:0 1rem;}
+  .results-section{padding:0 1rem 4rem;}
+  .page-section{padding:1.5rem 1rem 4rem;}
+  .summary-row{grid-template-columns:1fr;}
+  .charts-row{grid-template-columns:1fr;}
+  .models-row{grid-template-columns:repeat(2,1fr);}
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .threat-hero{flex-direction:column;}
+  .dna-card,.org-card,.campaign-card{flex-wrap:wrap;}
+  .campaign-stats{margin-left:0;}
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scanline{0%{top:-2px;opacity:0}5%{opacity:1}95%{opacity:1}100%{top:100vh;opacity:0}}
+@keyframes orbFloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-20px) scale(1.05)}66%{transform:translate(-20px,15px) scale(0.97)}}
+@keyframes orbFloat2{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-25px,20px) scale(1.03)}66%{transform:translate(20px,-15px) scale(0.98)}}
+.orb-1{animation:orbFloat 20s ease-in-out infinite;}
+.orb-2{animation:orbFloat2 25s ease-in-out infinite;}
+</style>
+</head>
+<body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<canvas id="particleCanvas" style="position:fixed;inset:0;z-index:0;pointer-events:none;will-change:transform;opacity:0.6"></canvas>
+<div id="scanline" style="position:fixed;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(37,99,235,0.4),rgba(6,182,212,0.3),transparent);z-index:0;pointer-events:none;animation:scanline 8s linear infinite;opacity:0"></div>
+
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-mark">⚡</div>
+    <span class="nav-logo-text">STRIDE</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('analyze',this)">Analyze</button>
+    <button class="nav-tab" onclick="showPage('history',this)">History</button>
+    <button class="nav-tab" onclick="showPage('dna',this)">Threat DNA</button>
+    <button class="nav-tab" onclick="showPage('intelligence',this)">Intelligence</button>
+    <button class="nav-tab" onclick="showPage('federation',this)">Federation</button>
+  </div>
+  <div class="nav-right">
+    <button class="notif-btn" onclick="requestNotifications()" id="notifBtn">🔔 Alerts</button>
+    <span class="nav-pill pill-blue">v2.0</span>
+    <span class="nav-pill pill-green" id="apiStatus">Online</span>
+  </div>
+</nav>
+
+<!-- ANALYZE -->
+<div id="page-analyze" class="page active">
+  <div class="hero">
+    <div class="hero-eyebrow">Advanced Threat Intelligence Platform</div>
+    <h1 class="hero-title">Detect.<br><span>Evolve.</span> Protect.</h1>
+    <p class="hero-desc">Self-supervised Transformer intrusion detection. Zero labeled data required. Learns from every scan.</p>
+    <div class="hero-tags">
+      <span class="hero-tag">Transformer Architecture</span>
+      <span class="hero-tag">Zero-Day Detection</span>
+      <span class="hero-tag">Self-Evolving</span>
+      <span class="hero-tag">Threat DNA</span>
+      <span class="hero-tag">Federated Learning</span>
+    </div>
+  </div>
+  <div class="metric-strip">
+    <div class="metric-item"><div class="metric-value">0.894</div><div class="metric-label">Best AUC</div></div>
+    <div class="metric-item"><div class="metric-value">95%</div><div class="metric-label">Attack Recall</div></div>
+    <div class="metric-item"><div class="metric-value">14</div><div class="metric-label">Attack Types</div></div>
+    <div class="metric-item"><div class="metric-value">2.5M</div><div class="metric-label">Flows Trained</div></div>
+  </div>
+  <div class="upload-section">
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".csv">
+      <div class="upload-icon">📡</div>
+      <div class="upload-title">Drop network traffic CSV here</div>
+      <div class="upload-sub">CICIDS format · Any size · Auto feature alignment · Memory safe</div>
+      <button class="btn-primary" onclick="event.stopPropagation();document.getElementById('fileInput').click()">⚡ Analyze Traffic</button>
+    </div>
+    <div id="errorBox"></div>
+  </div>
+  <div class="progress-section" id="progressSection">
+    <div class="progress-card">
+      <div class="progress-header">
+        <span class="progress-label" id="progressLabel">Analyzing...</span>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-sub" id="progressSub"></div>
+      <div class="live-feed" id="liveFeed"></div>
+    </div>
+  </div>
+  <div class="results-section" id="resultsSection">
+    <div class="section-hdr">
+      <span class="section-hdr-label">Threat Summary</span>
+      <div class="section-hdr-line"></div>
+      <span class="section-hdr-sub" id="scanFilename"></span>
+      <button class="btn-sm btn-ghost" onclick="exportPDF()" id="exportBtn">📄 Export PDF</button>
+    </div>
+    <div class="summary-row">
+      <div class="summary-card red"><div class="s-icon">🚨</div><div class="s-number red" id="rAttacks">—</div><div class="s-label">Attack Sequences</div><div class="s-sub" id="rAttackRate"></div></div>
+      <div class="summary-card green"><div class="s-icon">✅</div><div class="s-number green" id="rBenign">—</div><div class="s-label">Benign Sequences</div><div class="s-sub" id="rTotal"></div></div>
+      <div class="summary-card amber"><div class="s-icon">⚠️</div><div class="s-number amber" id="rMaxScore">—</div><div class="s-label">Max Threat Score</div><div class="s-sub" id="rAvgScore"></div></div>
+    </div>
+    <div class="section-hdr"><span class="section-hdr-label">Analysis</span><div class="section-hdr-line"></div></div>
+    <div class="charts-row">
+      <div class="chart-card"><div class="chart-label">Anomaly Score Distribution</div><canvas id="histChart" height="200"></canvas></div>
+      <div class="chart-card"><div class="chart-label">Threat Breakdown</div><canvas id="pieChart" height="200"></canvas></div>
+    </div>
+    <div class="timeline-card"><div class="chart-label">Anomaly Score Timeline — Dashed = detection threshold</div><canvas id="timelineChart" height="90"></canvas></div>
+    <div class="section-hdr"><span class="section-hdr-label">Model Consensus</span><div class="section-hdr-line"></div></div>
+    <div class="models-row">
+      <div class="model-card"><div class="model-name">Transformer V3</div><div class="model-val" id="mT">—</div><div class="model-bar-bg"><div class="model-bar-fill" id="mTBar" style="background:#3b82f6;width:0%"></div></div></div>
+      <div class="model-card"><div class="model-name">MLP Autoencoder</div><div class="model-val" id="mM">—</div><div class="model-bar-bg"><div class="model-bar-fill" id="mMBar" style="background:#a855f7;width:0%"></div></div></div>
+      <div class="model-card"><div class="model-name">Robust Transformer</div><div class="model-val" id="mR">—</div><div class="model-bar-bg"><div class="model-bar-fill" id="mRBar" style="background:#06b6d4;width:0%"></div></div></div>
+      <div class="model-card"><div class="model-name">Ensemble Score</div><div class="model-val" id="mE">—</div><div class="model-bar-bg"><div class="model-bar-fill" id="mEBar" style="background:#10b981;width:0%"></div></div></div>
+    </div>
+    <div class="section-hdr"><span class="section-hdr-label">Attack Type Breakdown</span><div class="section-hdr-line"></div></div>
+    <div class="breakdown-card" id="breakdownCard"></div>
+    <div class="section-hdr" style="margin-top:2rem"><span class="section-hdr-label">Explainability — SHAP</span><div class="section-hdr-line"></div><span class="section-hdr-sub">Click any row to see feature importance</span></div>
+    <div id="shapPanel" style="background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem"><div style="text-align:center;padding:2rem;color:var(--text3);font-size:0.83rem">Click a row in the detections table to see which features drove that detection</div></div>
+    <div class="section-hdr" style="margin-top:2rem"><span class="section-hdr-label">Top Suspicious Sequences</span><div class="section-hdr-line"></div><span class="section-hdr-sub">✓ confirm · ✗ false positive · ~ benign</span></div>
+    <div class="table-wrap">
+      <div class="table-filters">
+        <input class="filter-input" id="tableFilter" type="text" placeholder="🔍 Filter by type, risk, prediction..." oninput="filterTable()">
+        <select class="filter-select" id="riskFilter" onchange="filterTable()"><option value="">All Risk Levels</option><option value="CRITICAL">CRITICAL</option><option value="HIGH">HIGH</option><option value="MEDIUM">MEDIUM</option><option value="LOW">LOW</option></select>
+        <select class="filter-select" id="predFilter" onchange="filterTable()"><option value="">All Predictions</option><option value="ATTACK">ATTACK</option><option value="BENIGN">BENIGN</option></select>
+        <button class="btn-sm btn-ghost" onclick="resetTableFilters()">✕ Clear</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th onclick="sortTable('sequence')"># <span id="sort-sequence"></span></th>
+            <th onclick="sortTable('transformer_score')">Transformer <span id="sort-transformer_score"></span></th>
+            <th onclick="sortTable('mlp_score')">MLP <span id="sort-mlp_score"></span></th>
+            <th onclick="sortTable('robust_score')">Robust <span id="sort-robust_score"></span></th>
+            <th onclick="sortTable('ensemble_score')">Ensemble <span id="sort-ensemble_score"></span></th>
+            <th onclick="sortTable('risk_level')">Risk <span id="sort-risk_level"></span></th>
+            <th onclick="sortTable('prediction')">Prediction <span id="sort-prediction"></span></th>
+            <th onclick="sortTable('attack_type')">Type <span id="sort-attack_type"></span></th>
+            <th>Feedback</th>
+          </tr></thead>
+          <tbody id="resultsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="page-history" class="page">
+  <div class="page-section">
+    <div class="section-hdr" style="margin-bottom:2rem"><span class="section-hdr-label">Scan History</span><div class="section-hdr-line"></div><button class="btn-sm btn-ghost" onclick="loadHistory()">↻ Refresh</button></div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-val" id="hTotalScans">—</div><div class="stat-lbl">Total Scans</div></div>
+      <div class="stat-card"><div class="stat-val" id="hTotalAttacks">—</div><div class="stat-lbl">Attacks Detected</div></div>
+      <div class="stat-card"><div class="stat-val" id="hTotalFlows">—</div><div class="stat-lbl">Flows Analyzed</div></div>
+      <div class="stat-card"><div class="stat-val" id="hAvgRate">—</div><div class="stat-lbl">Avg Attack Rate</div></div>
+    </div>
+    <div class="section-hdr"><span class="section-hdr-label">Feedback & Model Evolution</span><div class="section-hdr-line"></div></div>
+    <div class="feedback-card" id="feedbackCard"><div style="color:var(--text3);font-size:0.83rem">No feedback yet. Confirm or reject detections to help the model evolve.</div></div>
+    <div class="section-hdr"><span class="section-hdr-label">Past Scans</span><div class="section-hdr-line"></div></div>
+    <div class="scan-list" id="scanList"><div class="empty"><div class="empty-icon">📂</div><div class="empty-title">No scans yet</div><div class="empty-sub">Upload a CSV file to start</div></div></div>
+  </div>
+</div>
+
+<!-- DNA -->
+<div id="page-dna" class="page">
+  <div class="page-section">
+    <div class="section-hdr" style="margin-bottom:2rem"><span class="section-hdr-label">Threat DNA Library</span><div class="section-hdr-line"></div><div style="display:flex;gap:8px"><button class="btn-sm btn-ghost" onclick="cleanupDNA()">🧬 Reclassify</button><button class="btn-sm btn-ghost" onclick="loadDNA()">↻ Refresh</button></div></div>
+    <div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:2rem"><p style="font-size:0.83rem;color:var(--text2);line-height:1.7">Every attack generates a unique DNA fingerprint based on its score pattern. Fingerprints are matched against future attacks to identify repeat threat actors — the foundation of STRIDE's federated threat intelligence network.</p></div>
+    <div style="display:flex;gap:1rem;margin-bottom:2rem"><div class="stat-card" style="flex:1"><div class="stat-val" id="dnaTotal">—</div><div class="stat-lbl">Unique Signatures</div></div></div>
+    <div id="dnaList"><div class="empty"><div class="empty-icon">🧬</div><div class="empty-title">No DNA signatures yet</div><div class="empty-sub">Analyze traffic to build the library</div></div></div>
+  </div>
+</div>
+
+<!-- INTELLIGENCE -->
+<div id="page-intelligence" class="page">
+  <div class="page-section">
+    <div class="section-hdr" style="margin-bottom:2rem"><span class="section-hdr-label">Threat Intelligence</span><div class="section-hdr-line"></div><button class="btn-sm btn-ghost" onclick="loadIntelligence()">↻ Refresh</button></div>
+    <div class="threat-hero">
+      <div><div class="threat-level-label">Current Threat Level</div><div class="threat-level-badge" id="threatLevelBadge">—</div></div>
+      <div style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:1rem">
+        <div class="stat-card"><div class="stat-val" id="iTotalSigs">—</div><div class="stat-lbl">DNA Signatures</div></div>
+        <div class="stat-card"><div class="stat-val" id="iTotalAttacks">—</div><div class="stat-lbl">Attacks Detected</div></div>
+        <div class="stat-card"><div class="stat-val" id="iModelStatus">—</div><div class="stat-lbl">Model Status</div></div>
+      </div>
+    </div>
+    <div class="section-hdr"><span class="section-hdr-label">DNA Match Alerts</span><div class="section-hdr-line"></div></div>
+    <div id="dnaAlertsCard" style="margin-bottom:2rem"><div class="empty"><div class="empty-icon">🧬</div><div class="empty-title">No DNA matches yet</div></div></div>
+    <div class="section-hdr"><span class="section-hdr-label">Attack Campaigns</span><div class="section-hdr-line"></div></div>
+    <div id="campaignsCard" style="margin-bottom:2rem"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No campaigns detected</div></div></div>
+    <div class="section-hdr"><span class="section-hdr-label">Threat Trends</span><div class="section-hdr-line"></div></div>
+    <div class="chart-card" style="margin-bottom:2rem"><div class="chart-label">Attack Rate Over Time</div><canvas id="trendsChart" height="120"></canvas></div>
+  </div>
+</div>
+
+<!-- FEDERATION -->
+<div id="page-federation" class="page">
+  <div class="page-section">
+    <div class="section-hdr" style="margin-bottom:2rem"><span class="section-hdr-label">Federated Learning</span><div class="section-hdr-line"></div><button class="btn-sm btn-ghost" onclick="loadFederation()">↻ Refresh</button></div>
+    <div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:2rem"><p style="font-size:0.83rem;color:var(--text2);line-height:1.7"><strong style="color:var(--text)">How it works:</strong> Each organization trains on private data. The Federated Aggregator combines model weights using <strong style="color:var(--blue-soft)">FedAvg</strong> — weighted by data size — without any raw traffic shared. Privacy preserved by design.</p></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem">
+      <div class="stat-card"><div class="stat-val" id="fedOrgs">3</div><div class="stat-lbl">Organizations</div></div>
+      <div class="stat-card"><div class="stat-val" id="fedRounds">—</div><div class="stat-lbl">Rounds Complete</div></div>
+      <div class="stat-card"><div class="stat-val" id="fedStatus">—</div><div class="stat-lbl">Status</div></div>
+    </div>
+    <div class="section-hdr"><span class="section-hdr-label">Participating Organizations</span><div class="section-hdr-line"></div></div>
+    <div id="orgsList" style="margin-bottom:2rem"></div>
+    <div class="section-hdr"><span class="section-hdr-label">Run Federation Round</span><div class="section-hdr-line"></div></div>
+    <div style="background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem">
+      <p style="font-size:0.83rem;color:var(--text2);margin-bottom:1.25rem;line-height:1.7">Collects model weights from all 3 organizations, applies FedAvg, distributes the improved global model back. Takes 2–5 minutes.</p>
+      <button class="btn-primary" onclick="runFederation()" id="fedRunBtn">⚡ Run Federation Round</button>
+      <div id="fedRunStatus" style="margin-top:1rem"></div>
+    </div>
+    <div class="section-hdr"><span class="section-hdr-label">Federation Results</span><div class="section-hdr-line"></div></div>
+    <div id="fedResults" style="margin-bottom:2rem"><div class="empty"><div class="empty-icon">🌐</div><div class="empty-title">No federation rounds yet</div></div></div>
+    <div class="section-hdr"><span class="section-hdr-label">Round History</span><div class="section-hdr-line"></div></div>
+    <div id="fedHistory"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No history yet</div></div></div>
+  </div>
+</div>
+
+<footer>STRIDE v2.0 — Self-supervised TRansformer Intrusion DEtection · MBZUAI Research</footer>
+
+<script>
+const API=window.location.hostname==='localhost'?'http://localhost:8000':window.location.origin
+let charts={},lastScanResults=null,notificationsEnabled=false
+let sortColumn='ensemble_score',sortDirection='desc'
+
+function showPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'))
+  document.getElementById('page-'+name).classList.add('active')
+  if(btn)btn.classList.add('active')
+  if(name==='history')loadHistory()
+  if(name==='dna')loadDNA()
+  if(name==='intelligence')loadIntelligence()
+  if(name==='federation')loadFederation()
+}
+
+const dropZone=document.getElementById('dropZone')
+const fileInput=document.getElementById('fileInput')
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('dragging')})
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragging'))
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragging');const f=e.dataTransfer.files[0];if(f){const err=validateFile(f);if(err){showError(err);return;}processFile(f)}})
+fileInput.addEventListener('change',e=>{if(e.target.files[0]){const f=e.target.files[0];const err=validateFile(f);if(err){document.getElementById('errorBox').innerHTML='<div class="error-box">⚠️ '+err+'</div>';return;}processFile(f)}})
+
+function validateFile(file){
+  if(!file.name.toLowerCase().endsWith('.csv'))return'Only CSV files are supported.'
+  if(file.size>500*1024*1024)return'File too large ('+( file.size/1024/1024).toFixed(1)+'MB). Max 500MB.'
+  if(file.size<100)return'File is empty or too small.'
+  return null
+}
+
+async function processFile(file){
+  document.getElementById('errorBox').innerHTML=''
+  document.getElementById('progressSection').style.display='block'
+  document.getElementById('resultsSection').style.display='none'
+  document.getElementById('liveFeed').innerHTML=''
+  setProgress(0,'Starting analysis...',file.name)
+  const formData=new FormData()
+  formData.append('file',file)
+  try{
+    const res=await fetch(API+'/analyze/stream',{method:'POST',body:formData})
+    if(!res.ok){showError('Server error: '+res.status);return}
+    const reader=res.body.getReader()
+    const decoder=new TextDecoder()
+    let buffer=''
+    const stageLabels={'loading':'File loaded','preprocessing':'Preprocessing data','sequencing':'Creating sequences','transformer':'Transformer V3 analyzing','transformer_done':'Transformer complete','mlp':'MLP Autoencoder analyzing','mlp_done':'MLP complete','robust':'Robust Transformer analyzing','robust_done':'Robust model complete','ensemble':'Computing ensemble','dna':'Extracting threat DNA','complete':'Analysis complete!'}
+    const stageColors={'transformer':'#3b82f6','transformer_done':'#3b82f6','mlp':'#a855f7','mlp_done':'#a855f7','robust':'#06b6d4','robust_done':'#06b6d4','ensemble':'#10b981','dna':'#f97316','complete':'#10b981'}
+    while(true){
+      const{done,value}=await reader.read()
+      if(done)break
+      buffer+=decoder.decode(value,{stream:true})
+      const lines=buffer.split('\n')
+      buffer=lines.pop()
+      for(const line of lines){
+        if(!line.startsWith('data: '))continue
+        try{
+          const data=JSON.parse(line.slice(6))
+          if(data.stage==='error'){showError(data.message);return}
+          setProgress(data.progress,stageLabels[data.stage]||data.message,data.message)
+          if(stageColors[data.stage])addFeed(data.message,stageColors[data.stage])
+          if(data.stage==='loading'&&data.sampled){document.getElementById('errorBox').innerHTML='<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:0.75rem 1rem;font-size:0.8rem;color:#fbbf24;margin-top:0.75rem">⚠️ Large file — sampled to '+(data.rows||0).toLocaleString()+' rows from '+(data.actual_rows||0).toLocaleString()+'. All attacks preserved.</div>'}
+          if(data.stage==='complete'){await sleep(300);showResults(data.results)}
+        }catch(e){}
+      }
+    }
+  }catch(e){console.error('Stream error:',e.message);showError('Cannot connect to STRIDE backend. Make sure it is running on port 8000.');document.getElementById('progressSection').style.display='none'}
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+function setProgress(pct,label,sub){document.getElementById('progressFill').style.width=pct+'%';document.getElementById('progressPct').textContent=pct+'%';document.getElementById('progressLabel').textContent=label;document.getElementById('progressSub').textContent=sub}
+function addFeed(msg,color){const feed=document.getElementById('liveFeed');const div=document.createElement('div');div.className='live-item';div.innerHTML='<div class="live-dot" style="background:'+color+'"></div><span>'+msg+'</span>';feed.insertBefore(div,feed.firstChild);if(feed.children.length>4)feed.removeChild(feed.lastChild)}
+function showError(msg){document.getElementById('errorBox').innerHTML='<div class="error-box">⚠️ '+msg+'</div>';document.getElementById('progressSection').style.display='none'}
+
+function showResults(d){
+  document.getElementById('progressSection').style.display='none'
+  document.getElementById('resultsSection').style.display='block'
+  lastScanResults=d
+  document.getElementById('scanFilename').textContent=d.filename
+  document.getElementById('rAttacks').textContent=d.attack_sequences.toLocaleString()
+  document.getElementById('rAttackRate').textContent=d.attack_rate+'% attack rate'
+  document.getElementById('rBenign').textContent=d.benign_sequences.toLocaleString()
+  document.getElementById('rTotal').textContent=d.total_sequences.toLocaleString()+' total'
+  document.getElementById('rMaxScore').textContent=d.max_ensemble_score
+  document.getElementById('rAvgScore').textContent='Avg: '+d.avg_ensemble_score
+  const ms=d.model_scores
+  setModel('mT','mTBar',ms.transformer,'#3b82f6')
+  setModel('mM','mMBar',ms.mlp,'#a855f7')
+  setModel('mR','mRBar',ms.robust,'#06b6d4')
+  setModel('mE','mEBar',ms.ensemble,'#10b981')
+  buildHist(d.score_distribution)
+  buildPie(d.attack_sequences,d.benign_sequences)
+  buildTimeline(d.timeline)
+  buildBreakdown(d.attack_breakdown)
+  buildTable(d.top_suspicious)
+  const nA=d.attack_sequences||0,maxS=d.max_ensemble_score||0,rate=d.attack_rate||0
+  if(maxS>0.9||rate>5)sendAlert('🚨 Critical Threat Detected',nA+' attack(s) in '+d.filename+'. Max score: '+maxS,'critical')
+  else if(nA>0)sendAlert('⚠️ Attacks Detected',nA+' suspicious sequence(s) in '+d.filename,'attack')
+  else sendAlert('✅ Scan Complete','No attacks detected in '+d.filename,'success')
+  document.getElementById('resultsSection').scrollIntoView({behavior:'smooth'})
+}
+
+function setModel(id,barId,score,color){document.getElementById(id).textContent=score;setTimeout(()=>{document.getElementById(barId).style.width=(score*100)+'%'},100)}
+
+const cOpts={responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#475569',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#475569',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'}}}}
+
+function buildHist(dist){if(charts.hist)charts.hist.destroy();const ctx=document.getElementById('histChart').getContext('2d');charts.hist=new Chart(ctx,{type:'bar',data:{labels:dist.bins.slice(0,-1).map(b=>b.toFixed(2)),datasets:[{data:dist.counts,backgroundColor:dist.bins.slice(0,-1).map(b=>b>0.5?'rgba(239,68,68,0.7)':b>0.3?'rgba(249,115,22,0.6)':'rgba(37,99,235,0.5)'),borderRadius:3}]},options:cOpts})}
+
+function buildPie(attacks,benign){if(charts.pie)charts.pie.destroy();const ctx=document.getElementById('pieChart').getContext('2d');charts.pie=new Chart(ctx,{type:'doughnut',data:{labels:['Benign','Attack'],datasets:[{data:[benign,attacks],backgroundColor:['rgba(16,185,129,0.75)','rgba(239,68,68,0.75)'],borderColor:['#10b981','#ef4444'],borderWidth:1.5,hoverOffset:6}]},options:{responsive:true,cutout:'68%',plugins:{legend:{labels:{color:'#64748b',font:{size:11}}}}}})}
+
+function buildTimeline(timeline){if(charts.timeline)charts.timeline.destroy();const ctx=document.getElementById('timelineChart').getContext('2d');charts.timeline=new Chart(ctx,{type:'line',data:{labels:timeline.map(p=>p.x),datasets:[{data:timeline.map(p=>p.y),borderColor:'#3b82f6',backgroundColor:'rgba(37,99,235,0.04)',borderWidth:1.5,pointRadius:0,fill:true,tension:0.4},{data:timeline.map(()=>0.5),borderColor:'rgba(239,68,68,0.35)',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#475569',font:{size:9},maxTicksLimit:10},grid:{color:'rgba(255,255,255,0.03)'}},y:{min:0,max:1,ticks:{color:'#475569',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'}}}}})}
+
+function buildBreakdown(breakdown){const card=document.getElementById('breakdownCard');if(!breakdown||Object.keys(breakdown).length===0){card.innerHTML='<div style="color:var(--text3);font-size:0.83rem">Upload a labeled CSV to see per-attack breakdown.</div>';return}const entries=Object.entries(breakdown).filter(([k])=>k!=='BENIGN').sort((a,b)=>b[1].detection_rate-a[1].detection_rate);card.innerHTML=entries.map(([name,stats])=>{const r=stats.detection_rate;const color=r>=70?'#10b981':r>=40?'#f59e0b':'#ef4444';return'<div class="bd-row"><div class="bd-name">'+name+'</div><div class="bd-track"><div class="bd-fill" style="width:'+r+'%;background:'+color+'"></div></div><div class="bd-pct" style="color:'+color+'">'+r+'%</div><div class="bd-count">'+stats.count+' seqs</div></div>'}).join('')}
+
+function buildTable(rows){window.allTableRows=rows;renderTable(rows)}
+
+function renderTable(rows){const tbody=document.getElementById('resultsTable');tbody.innerHTML=rows.map((r,idx)=>{const sc=r.ensemble_score>0.7?'#ef4444':r.ensemble_score>0.4?'#f97316':'#10b981';return'<tr id="row-'+idx+'" style="cursor:pointer" onclick="handleRowClick(event,'+idx+')" onmouseover="this.style.background=\'rgba(37,99,235,0.05)\'" onmouseout="this.style.background=\'\'"><td style="color:var(--text3);font-weight:500;font-family:\'DM Mono\',monospace">#'+r.sequence+'</td><td><div class="score-cell"><div class="score-bar"><div class="score-fill" style="width:'+(r.transformer_score*100)+'%;background:#3b82f6"></div></div>'+r.transformer_score+'</div></td><td><div class="score-cell"><div class="score-bar"><div class="score-fill" style="width:'+(r.mlp_score*100)+'%;background:#a855f7"></div></div>'+r.mlp_score+'</div></td><td><div class="score-cell"><div class="score-bar"><div class="score-fill" style="width:'+(r.robust_score*100)+'%;background:#06b6d4"></div></div>'+r.robust_score+'</div></td><td style="color:'+sc+';font-weight:600;font-family:\'DM Mono\',monospace">'+r.ensemble_score+'</td><td><span class="badge badge-'+r.risk_level.toLowerCase()+'">'+r.risk_level+'</span></td><td><span class="badge badge-'+r.prediction.toLowerCase()+'">'+r.prediction+'</span></td><td style="color:var(--text3);font-size:0.78rem">'+(r.attack_type||'—')+'</td><td id="fb-'+idx+'"><div style="display:flex;gap:4px"><button class="btn-sm btn-confirm" onclick="giveFeedback('+idx+',\'confirmed_attack\')">✓</button><button class="btn-sm btn-reject" onclick="giveFeedback('+idx+',\'false_positive\')">✗</button><button class="btn-sm btn-benign" onclick="giveFeedback('+idx+',\'confirmed_benign\')">~</button></div></td></tr>'}).join('')}
+
+function handleRowClick(event,idx){if(event.target.tagName==='BUTTON'||event.target.closest('button'))return;loadSHAP(idx);document.querySelectorAll('tr').forEach(r=>r.style.outline='');const row=document.getElementById('row-'+idx);if(row)row.style.outline='1px solid rgba(37,99,235,0.4)'}
+
+function sortTable(column){if(sortColumn===column){sortDirection=sortDirection==='asc'?'desc':'asc'}else{sortColumn=column;sortDirection='desc'}document.querySelectorAll('[id^="sort-"]').forEach(el=>el.textContent='');const ind=document.getElementById('sort-'+column);if(ind)ind.textContent=sortDirection==='asc'?' ↑':' ↓';filterTable()}
+
+function filterTable(){if(!window.allTableRows)return;const text=(document.getElementById('tableFilter')?.value||'').toLowerCase();const risk=document.getElementById('riskFilter')?.value||'';const pred=document.getElementById('predFilter')?.value||'';let filtered=window.allTableRows.filter(r=>{const mt=!text||(r.attack_type||'').toLowerCase().includes(text)||r.risk_level.toLowerCase().includes(text)||r.prediction.toLowerCase().includes(text)||String(r.sequence).includes(text);return mt&&(!risk||r.risk_level===risk)&&(!pred||r.prediction===pred)});filtered.sort((a,b)=>{let va=a[sortColumn],vb=b[sortColumn];if(sortColumn==='risk_level'){const o={'CRITICAL':4,'HIGH':3,'MEDIUM':2,'LOW':1};va=o[va]||0;vb=o[vb]||0}if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase()}if(va<vb)return sortDirection==='asc'?-1:1;if(va>vb)return sortDirection==='asc'?1:-1;return 0});renderTable(filtered)}
+
+function resetTableFilters(){['tableFilter','riskFilter','predFilter'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});sortColumn='ensemble_score';sortDirection='desc';document.querySelectorAll('[id^="sort-"]').forEach(el=>el.textContent='');if(window.allTableRows)renderTable(window.allTableRows)}
+
+async function giveFeedback(rowIdx,feedbackType){const fbCell=document.getElementById('fb-'+rowIdx);try{const res=await fetch(API+'/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({detection_id:rowIdx+1,feedback:feedbackType,notes:''})});const data=await res.json();const labels={'confirmed_attack':'✓ Confirmed','false_positive':'✗ False +','confirmed_benign':'~ Benign'};fbCell.innerHTML='<span class="fb-done">'+labels[feedbackType]+'</span>';showToast('Feedback saved · Total: '+data.total_feedback)}catch(e){console.error('Feedback error:',e)}}
+
+function showToast(msg){const t=document.createElement('div');t.style.cssText='position:fixed;bottom:2rem;right:2rem;z-index:9999;max-width:340px;background:var(--navy3);border:1px solid var(--border2);border-radius:12px;padding:1rem 1.25rem;font-size:0.82rem;color:var(--green);box-shadow:0 8px 30px rgba(0,0,0,0.5);animation:fadeIn 0.3s ease;';t.textContent='✓ '+msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000)}
+
+async function loadSHAP(sequenceIdx){if(!lastScanResults)return;const panel=document.getElementById('shapPanel');if(!panel)return;panel.innerHTML='<div style="text-align:center;padding:1rem;color:var(--blue-soft);font-size:0.83rem">Analyzing feature importance...</div>';try{const res=await fetch(API+'/shap/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sequence_idx:sequenceIdx,sequence_data:lastScanResults.results?.[sequenceIdx]||null,top_suspicious:lastScanResults.top_suspicious||[]})});const data=await res.json();if(data.error){panel.innerHTML='<div class="error-box">⚠️ '+data.error+'</div>';return}if(!data.shap_values||data.shap_values.length===0){panel.innerHTML='<div class="error-box">⚠️ No SHAP values returned</div>';return}const maxVal=Math.max(...data.shap_values.map(s=>s.importance));const predColor=data.prediction==='ATTACK'?'#f87171':'#34d399';panel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem"><div><div style="font-size:0.875rem;font-weight:500;color:var(--text)">Sequence #'+data.sequence+' — Feature Importance</div><div style="font-size:0.78rem;color:var(--text3);margin-top:3px">'+data.explanation+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="badge badge-'+data.prediction.toLowerCase()+'">'+data.prediction+'</span><span class="badge badge-'+data.risk_level.toLowerCase()+'">'+data.risk_level+'</span><span style="font-size:1rem;font-weight:700;color:'+predColor+';font-family:\'DM Mono\',monospace">'+data.ensemble_score+'</span></div></div><div style="font-size:0.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:2px;margin-bottom:0.75rem;font-weight:600">Top Features</div>'+data.shap_values.map((s,i)=>{const pct=(s.importance/maxVal*100).toFixed(1);const color=i===0?'#ef4444':i<3?'#f97316':i<6?'#f59e0b':'#3b82f6';return'<div class="shap-row"><div class="shap-feat">'+s.feature+'</div><div class="shap-track"><div class="shap-fill" style="width:'+pct+'%;background:'+color+'"></div></div><div class="shap-val">'+s.shap_value.toFixed(4)+'</div></div>'}).join('')+'<div style="margin-top:0.75rem;font-size:0.7rem;color:var(--text3);text-align:right">Higher value = stronger contribution to detection</div>'}catch(e){panel.innerHTML='<div class="error-box">⚠️ '+e.message+'</div>'}}
+
+async function exportPDF(){if(!lastScanResults){showToast('Run an analysis first!');return}const btn=document.getElementById('exportBtn');btn.textContent='⏳ Generating...';btn.disabled=true;try{const res=await fetch(API+'/report/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scan_results:lastScanResults})});if(!res.ok)throw new Error('Failed to generate report');const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='STRIDE_Report_'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.pdf';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);showToast('PDF report downloaded!')}catch(e){showToast('Error: '+e.message)}finally{btn.textContent='📄 Export PDF';btn.disabled=false}}
+
+async function requestNotifications(){if('Notification' in window){const p=await Notification.requestPermission();notificationsEnabled=p==='granted';showToast(notificationsEnabled?'Notifications enabled!':'Notifications blocked')}}
+
+function sendAlert(title,body,type){type=type||'info';if(notificationsEnabled&&document.hidden)new Notification('STRIDE — '+title,{body});const colors={'critical':'#ef4444','attack':'#f97316','info':'#3b82f6','success':'#10b981'};const color=colors[type]||colors.info;const t=document.createElement('div');t.style.cssText='position:fixed;bottom:2rem;right:2rem;z-index:9999;max-width:360px;background:var(--navy3);border:1px solid '+color+'33;border-left:3px solid '+color+';border-radius:12px;padding:1rem 1.25rem;font-size:0.83rem;color:var(--text);box-shadow:0 8px 30px rgba(0,0,0,0.5);animation:fadeIn 0.3s ease;cursor:pointer;';t.innerHTML='<div style="font-weight:600;color:'+color+';margin-bottom:3px">'+title+'</div><div style="color:var(--text3);font-size:0.78rem">'+body+'</div>';t.onclick=()=>t.remove();document.body.appendChild(t);setTimeout(()=>{if(t.parentNode)t.remove()},6000)}
+
+async function loadHistory(){try{const res=await fetch(API+'/history');const data=await res.json();document.getElementById('hTotalScans').textContent=data.total_scans;document.getElementById('hTotalAttacks').textContent=data.total_attacks_detected.toLocaleString();document.getElementById('hTotalFlows').textContent=data.total_flows_analyzed.toLocaleString();document.getElementById('hAvgRate').textContent=data.avg_attack_rate+'%';let evoStats=null;try{const er=await fetch(API+'/evolution');evoStats=await er.json()}catch(e){}const fb=data.feedback_stats;const totalFb=Object.values(fb).reduce((a,b)=>a+b,0);const fbCard=document.getElementById('feedbackCard');if(totalFb===0){fbCard.innerHTML='<div style="color:var(--text3);font-size:0.83rem">No feedback yet. Confirm or reject detections to help the model evolve.</div>'+(evoStats?'<div style="margin-top:1rem;padding:0.75rem 1rem;background:var(--card);border-radius:10px;font-size:0.78rem;color:var(--text3)">Give '+evoStats.feedback_until_evolution+' more feedback items to trigger first evolution</div>':'')}else{const isEvolving=evoStats?.is_evolving;const evoCount=evoStats?.evolution_count||0;const untilNext=evoStats?.feedback_until_evolution||0;const precision=evoStats?.precision_from_feedback!=null?(evoStats.precision_from_feedback*100).toFixed(1)+'%':'N/A';fbCard.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem"><div class="stat-card"><div class="stat-val" style="color:var(--green)">'+totalFb+'</div><div class="stat-lbl">Total Feedback</div></div><div class="stat-card"><div class="stat-val">'+evoCount+'</div><div class="stat-lbl">Evolutions Run</div></div><div class="stat-card"><div class="stat-val" style="color:var(--cyan)">'+precision+'</div><div class="stat-lbl">Feedback Precision</div></div><div class="stat-card"><div class="stat-val" style="color:'+(isEvolving?'#f97316':untilNext===0?'#10b981':'#64748b')+'">'+(isEvolving?'⚡ Active':untilNext===0?'✓ Ready':untilNext+' more')+'</div><div class="stat-lbl">Next Evolution</div></div></div>'+(isEvolving?'<div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:10px;padding:0.75rem 1rem;font-size:0.82rem;color:#fb923c;margin-bottom:1rem">⚡ Model is currently evolving...</div>':'')+(evoStats?.evolution_history?.length>0?'<div style="font-size:0.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:0.75rem;font-weight:600">Evolution History</div>'+evoStats.evolution_history.map(e=>'<div class="fb-row"><span style="font-size:0.8rem;color:var(--text3)">'+new Date(e.timestamp).toLocaleString()+'</span><span style="font-size:0.78rem;color:var(--text3)">'+( e.notes||'—')+'</span><span style="font-size:0.8rem;font-weight:600;color:var(--blue-soft)">P: '+e.precision+'</span></div>').join(''):'<div style="font-size:0.83rem;color:var(--text2)">'+Object.entries(fb).map(([k,v])=>'<div class="fb-row"><span style="color:var(--text2)">'+k.replace(/_/g,' ')+'</span><span style="font-weight:600;color:var(--blue-soft)">'+v+'</span></div>').join('')+'</div>')}const list=document.getElementById('scanList');if(data.scans.length===0){list.innerHTML='<div class="empty"><div class="empty-icon">📂</div><div class="empty-title">No scans yet</div><div class="empty-sub">Upload a CSV file to start</div></div>';return}list.innerHTML=data.scans.map(s=>{const rate=s.attack_rate;const rc=rate>10?'#ef4444':rate>2?'#f97316':'#10b981';return'<div class="scan-item"><div class="scan-icon">📁</div><div class="scan-info"><div class="scan-name">'+s.filename+'</div><div class="scan-meta">'+new Date(s.timestamp).toLocaleString()+' · '+s.total_sequences.toLocaleString()+' sequences</div></div><div class="scan-stats"><div class="scan-stat"><div class="scan-stat-val" style="color:#f87171">'+s.attack_sequences+'</div><div class="scan-stat-lbl">Attacks</div></div><div class="scan-stat"><div class="scan-stat-val" style="color:#34d399">'+s.benign_sequences.toLocaleString()+'</div><div class="scan-stat-lbl">Benign</div></div></div><div class="scan-rate" style="color:'+rc+';background:'+rc+'18;border:1px solid '+rc+'33">'+rate+'%</div></div>'}).join('')}catch(e){console.error('History error:',e)}}
+
+async function loadDNA(){try{const res=await fetch(API+'/dna');const data=await res.json();document.getElementById('dnaTotal').textContent=data.total_signatures;const list=document.getElementById('dnaList');if(data.library.length===0){list.innerHTML='<div class="empty"><div class="empty-icon">🧬</div><div class="empty-title">No DNA signatures yet</div><div class="empty-sub">Analyze traffic to build the library</div></div>';return}list.innerHTML=data.library.map(d=>'<div class="dna-card"><div class="dna-hash">'+d.dna_hash+'</div><div class="dna-info"><div class="dna-type">'+d.attack_type+'</div><div class="dna-meta">First: '+new Date(d.first_seen).toLocaleDateString()+' · Last: '+new Date(d.last_seen).toLocaleDateString()+'</div></div><div class="dna-scores"><div class="dna-score"><div class="dna-score-val">'+d.avg_transformer_score.toFixed(3)+'</div><div class="dna-score-lbl">Transformer</div></div><div class="dna-score"><div class="dna-score-val">'+d.avg_mlp_score.toFixed(3)+'</div><div class="dna-score-lbl">MLP</div></div><div class="dna-score"><div class="dna-score-val">'+d.avg_ensemble_score.toFixed(3)+'</div><div class="dna-score-lbl">Ensemble</div></div></div><div class="dna-count">'+d.occurrence_count+'x</div></div>').join('')}catch(e){console.error('DNA error:',e)}}
+
+async function cleanupDNA(){try{const res=await fetch(API+'/dna/cleanup',{method:'POST'});const data=await res.json();if(data.status==='success'){showToast('Reclassified '+data.updated+' signatures');loadDNA()}}catch(e){console.error('Cleanup error:',e)}}
+
+async function loadIntelligence(){
+try{
+  const res=await fetch(API+'/intelligence')
+  const data=await res.json()
+  if(data.error){console.error(data.error);return}
+  const lc={'CRITICAL':'#ef4444','HIGH':'#f97316','MEDIUM':'#f59e0b','LOW':'#10b981'}
+  const color=lc[data.threat_level]||'#10b981'
+  const badge=document.getElementById('threatLevelBadge')
+  if(badge)badge.innerHTML='<span style="color:'+color+'">'+data.threat_level+'</span>'
+  const sigs=document.getElementById('iTotalSigs')
+  if(sigs)sigs.textContent=data.total_signatures
+  const atk=document.getElementById('iTotalAttacks')
+  if(atk)atk.textContent=data.total_attacks_detected
+  const st=document.getElementById('iModelStatus')
+  if(st)st.textContent=data.model_status==='evolving'?'Evolving':'Baseline'
+  const dnaRes=await fetch(API+'/dna')
+  const dnaData=await dnaRes.json()
+  const alertsCard=document.getElementById('dnaAlertsCard')
+  if(alertsCard){
+    if(dnaData.library.length===0){
+      alertsCard.innerHTML='<div class="empty"><div class="empty-icon">🧬</div><div class="empty-title">No DNA matches yet</div></div>'
+    }else{
+      const repeated=dnaData.library.filter(function(d){return d.occurrence_count>1})
+      if(repeated.length===0){
+        alertsCard.innerHTML='<div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;font-size:0.83rem;color:var(--text2)">'+dnaData.library.length+' unique signatures in library. No repeat actors detected yet.</div>'
+      }else{
+        alertsCard.innerHTML=repeated.map(function(d){
+          return '<div class="alert-card"><div class="alert-icon">🚨</div><div class="alert-body"><div class="alert-title">Repeat Threat Actor Detected</div><div class="alert-sub">Signature <strong>'+d.dna_hash+'</strong> seen <strong>'+d.occurrence_count+'x</strong> &middot; '+d.attack_type+'</div></div><div style="font-size:1.25rem;font-weight:700;color:var(--orange)">'+d.occurrence_count+'x</div></div>'
+        }).join('')
+      }
+    }
+  }
+  const campaignsCard=document.getElementById('campaignsCard')
+  if(campaignsCard){
+    if(!data.campaigns||data.campaigns.length===0){
+      campaignsCard.innerHTML='<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No campaigns yet</div></div>'
+    }else{
+      campaignsCard.innerHTML=data.campaigns.map(function(c){
+        return '<div class="campaign-card"><div><div class="campaign-type">'+c.attack_type+'</div><div class="campaign-meta">First: '+new Date(c.first_seen).toLocaleDateString()+' &middot; Last: '+new Date(c.last_seen).toLocaleDateString()+'</div></div><div class="campaign-stats"><div class="campaign-stat"><div class="campaign-stat-val">'+c.signature_count+'</div><div class="campaign-stat-lbl">Signatures</div></div><div class="campaign-stat"><div class="campaign-stat-val">'+c.total_occurrences+'</div><div class="campaign-stat-lbl">Occurrences</div></div><div class="campaign-stat"><div class="campaign-stat-val">'+parseFloat(c.avg_score).toFixed(3)+'</div><div class="campaign-stat-lbl">Avg Score</div></div></div></div>'
+      }).join('')
+    }
+  }
+  if(data.recent_trends&&data.recent_trends.length>0){
+    if(charts.trends)charts.trends.destroy()
+    const tCtx=document.getElementById('trendsChart')
+    if(tCtx){
+      const trends=[...data.recent_trends].reverse()
+      charts.trends=new Chart(tCtx.getContext('2d'),{
+        type:'line',
+        data:{labels:trends.map(function(t){return t.date}),datasets:[{label:'Attack Rate %',data:trends.map(function(t){return t.avg_rate}),borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,0.04)',borderWidth:2,pointRadius:4,fill:true,tension:0.4}]},
+        options:{responsive:true,plugins:{legend:{labels:{color:'#475569',font:{size:10}}}},scales:{x:{ticks:{color:'#475569',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#475569',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'}}}}
+      })
+    }
+  }
+}catch(e){console.error('Intelligence error:',e)}}
+
+async function loadFederation(){try{const res=await fetch(API+'/federation/status');const data=await res.json();if(data.error){console.error(data.error);return}document.getElementById('fedOrgs').textContent=data.n_organizations;document.getElementById('fedRounds').textContent=data.total_rounds;document.getElementById('fedStatus').textContent=data.is_running?'⚡ Running':data.global_model_exists?'✓ Active':'○ Ready';const orgColors=['#3b82f6','#10b981','#f97316'];const orgIcons=['🏦','🏛️','📡'];const orgsList=document.getElementById('orgsList');if(orgsList){orgsList.innerHTML=data.organizations.map((org,i)=>'<div class="org-card"><div class="org-icon" style="background:'+orgColors[i]+'18;border:1px solid '+orgColors[i]+'33">'+orgIcons[i]+'</div><div class="org-info"><div class="org-name">'+org.name+'</div><div class="org-desc">'+org.description+'</div></div><div class="org-stats"><div class="org-stat"><div class="org-stat-val" style="color:'+orgColors[i]+'">'+( org.data_size/1000).toFixed(0)+'K</div><div class="org-stat-lbl">Data Size</div></div><div class="org-stat"><div class="org-stat-val">'+(org.auc_before!==null?org.auc_before.toFixed(4):'—')+'</div><div class="org-stat-lbl">AUC Before</div></div><div class="org-stat"><div class="org-stat-val" style="color:'+(org.auc_after!==null&&org.auc_after>org.auc_before?'#10b981':'inherit')+'">'+(org.auc_after!==null?org.auc_after.toFixed(4):'—')+'</div><div class="org-stat-lbl">AUC After</div></div></div></div>').join('')}if(data.history&&data.history.length>0){const fedHistory=document.getElementById('fedHistory');if(fedHistory){fedHistory.innerHTML=data.history.map(h=>'<div class="fed-result-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem"><div><div style="font-size:0.875rem;font-weight:500">Round '+h.round_number+'</div><div style="font-size:0.72rem;color:var(--text3)">'+new Date(h.timestamp).toLocaleString()+'</div></div><span class="fed-improvement '+(h.improvement>=0?'pos':'neg')+'">'+(h.improvement>=0?'+':'')+(h.improvement*100).toFixed(2)+'% AUC</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem"><div class="stat-card"><div class="stat-val">'+h.n_organizations+'</div><div class="stat-lbl">Organizations</div></div><div class="stat-card"><div class="stat-val">'+h.avg_auc_before.toFixed(4)+'</div><div class="stat-lbl">Avg AUC Before</div></div><div class="stat-card"><div class="stat-val" style="color:'+(h.improvement>=0?'#10b981':'#ef4444')+'">'+h.avg_auc_after.toFixed(4)+'</div><div class="stat-lbl">Avg AUC After</div></div></div>'+(h.details?.orgs?'<div style="margin-top:1rem">'+h.details.orgs.map(org=>'<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.8rem"><span style="color:var(--text2)">'+org.name+'</span><span style="color:var(--text3)">'+org.auc_before.toFixed(4)+' → <span style="color:'+(org.improvement>=0?'#10b981':'#f87171')+'">'+org.auc_after.toFixed(4)+'</span> ('+(org.improvement>=0?'+':'')+(org.improvement*100).toFixed(2)+'%)</span></div>').join('')+'</div>':'')+'</div>').join('')}const latest=data.history[0];const fedResults=document.getElementById('fedResults');if(fedResults){fedResults.innerHTML='<div style="background:'+(latest.improvement>=0?'rgba(16,185,129,0.05)':'rgba(239,68,68,0.05)')+';border:1px solid '+(latest.improvement>=0?'rgba(16,185,129,0.15)':'rgba(239,68,68,0.15)')+';border-radius:14px;padding:1.25rem 1.5rem"><div style="font-size:0.9rem;font-weight:500;color:'+(latest.improvement>=0?'#34d399':'#f87171')+';margin-bottom:6px">'+(latest.improvement>=0?'✓ Federation Improved Performance':'⚠ Federation Round Complete')+'</div><div style="font-size:0.82rem;color:var(--text2);line-height:1.7">Average AUC across '+latest.n_organizations+' organizations: <strong>'+latest.avg_auc_before.toFixed(4)+'</strong> → <strong style="color:'+(latest.improvement>=0?'#34d399':'#f87171')+'">'+latest.avg_auc_after.toFixed(4)+'</strong> ('+(latest.improvement>=0?'+':'')+(latest.improvement*100).toFixed(2)+'% improvement)<br>Global model saved and distributed. Privacy preserved — no raw data was shared.</div></div>'}}}catch(e){console.error('Federation error:',e)}}
+
+async function runFederation(){const btn=document.getElementById('fedRunBtn');const status=document.getElementById('fedRunStatus');btn.disabled=true;btn.textContent='⚡ Running...';status.innerHTML='<div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:10px;padding:0.75rem 1rem;font-size:0.82rem;color:#fb923c">⚡ Federation round started. This takes 2–5 minutes...</div>';try{const res=await fetch(API+'/federation/run',{method:'POST'});const data=await res.json();if(data.error){status.innerHTML='<div class="error-box">⚠️ '+data.error+'</div>';btn.disabled=false;btn.textContent='⚡ Run Federation Round';return}let attempts=0;const poll=setInterval(async()=>{attempts++;try{const sRes=await fetch(API+'/federation/status');const sData=await sRes.json();if(!sData.is_running||attempts>=60){clearInterval(poll);btn.disabled=false;btn.textContent='⚡ Run Federation Round';if(sData.total_rounds>0){status.innerHTML='<div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:0.75rem 1rem;font-size:0.82rem;color:#34d399">✓ Federation complete! Refreshing results...</div>';await sleep(1000);loadFederation()}}else{status.innerHTML='<div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:10px;padding:0.75rem 1rem;font-size:0.82rem;color:#fb923c">⚡ Running... ('+attempts*5+'s elapsed)</div>'}}catch(e){clearInterval(poll);btn.disabled=false;btn.textContent='⚡ Run Federation Round'}},5000)}catch(e){status.innerHTML='<div class="error-box">⚠️ '+e.message+'</div>';btn.disabled=false;btn.textContent='⚡ Run Federation Round'}}
+
+async function checkAPI(){try{const r=await fetch(API+'/health');const d=await r.json();if(d.status==='online'){const el=document.getElementById('apiStatus');el.textContent='Online';el.className='nav-pill pill-green'}}catch{const el=document.getElementById('apiStatus');el.textContent='Offline';el.className='nav-pill';el.style.cssText='background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.3);font-size:0.72rem;padding:4px 12px;border-radius:20px;'}}
+// ========================
+// PARTICLE NETWORK
+// ========================
+function initParticles(){
+  const canvas=document.getElementById('particleCanvas')
+  const ctx=canvas.getContext('2d')
+  let W=canvas.width=window.innerWidth
+  let H=canvas.height=window.innerHeight
+  let paused=false
+
+  const COLORS=['rgba(37,99,235,','rgba(6,182,212,','rgba(99,102,241,','rgba(255,255,255,']
+  const NUM=75
+  const particles=[]
+
+  for(let i=0;i<NUM;i++){
+    particles.push({
+      x:Math.random()*W, y:Math.random()*H,
+      vx:(Math.random()-0.5)*0.35, vy:(Math.random()-0.5)*0.35,
+      r:Math.random()*1.8+0.4,
+      color:COLORS[Math.floor(Math.random()*COLORS.length)],
+      opacity:Math.random()*0.6+0.2
+    })
+  }
+
+  window.addEventListener('resize',()=>{
+    W=canvas.width=window.innerWidth
+    H=canvas.height=window.innerHeight
+  })
+
+  function draw(){
+    ctx.clearRect(0,0,W,H)
+    if(paused){requestAnimationFrame(draw);return}
+
+    for(let i=0;i<NUM;i++){
+      const p=particles[i]
+      p.x+=p.vx; p.y+=p.vy
+      if(p.x<0||p.x>W)p.vx*=-1
+      if(p.y<0||p.y>H)p.vy*=-1
+
+      // Draw particle
+      ctx.beginPath()
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2)
+      ctx.fillStyle=p.color+p.opacity+')'
+      ctx.fill()
+
+      // Draw connections
+      for(let j=i+1;j<NUM;j++){
+        const q=particles[j]
+        const dx=p.x-q.x, dy=p.y-q.y
+        const dist=Math.sqrt(dx*dx+dy*dy)
+        if(dist<140){
+          const alpha=(1-dist/140)*0.18
+          ctx.beginPath()
+          ctx.moveTo(p.x,p.y)
+          ctx.lineTo(q.x,q.y)
+          ctx.strokeStyle='rgba(37,99,235,'+alpha+')'
+          ctx.lineWidth=0.6
+          ctx.stroke()
+        }
+      }
+    }
+    requestAnimationFrame(draw)
+  }
+  draw()
+
+  // Pause during analysis to save resources
+  window._pauseParticles=function(){paused=true}
+  window._resumeParticles=function(){paused=false}
+}
+
+function initScanline(){
+  const el=document.getElementById('scanline')
+  setTimeout(()=>{el.style.opacity='1'},2000)
+}
+
+initParticles()
+initScanline()
+
+checkAPI()
+setInterval(checkAPI,30000)
+loadIntelligence()
+</script>
+</body>
+</html>
