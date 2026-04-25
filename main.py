@@ -266,7 +266,6 @@ class MLPAutoencoder(nn.Module):
 # LOAD MODELS
 # =========================
 
-import os
 BASE = os.path.dirname(os.path.abspath(__file__))
 INPUT_DIM = 78
 SEQ_LEN = 20
@@ -276,18 +275,24 @@ scaler = joblib.load(f"{BASE}/scaler_transformer_v3.pkl")
 
 transformer = TransformerAutoencoder(input_dim=INPUT_DIM)
 transformer.load_state_dict(torch.load(
-    f"{BASE}/transformer_v3_model.pth", weights_only=False))
+    f"{BASE}/transformer_v3_model.pth", map_location='cpu', weights_only=False))
 transformer.eval()
 
-mlp = MLPAutoencoder(input_dim=INPUT_DIM)
-mlp.load_state_dict(torch.load(
-    f"{BASE}/autoencoder_model.pth", weights_only=False))
-mlp.eval()
+try:
+    mlp = MLPAutoencoder(input_dim=INPUT_DIM)
+    mlp.load_state_dict(torch.load(
+        f"{BASE}/autoencoder_model.pth", map_location='cpu', weights_only=False))
+    mlp.eval()
+except:
+    mlp = None
 
-robust = TransformerAutoencoder(input_dim=INPUT_DIM)
-robust.load_state_dict(torch.load(
-    f"{BASE}/transformer_robust_model.pth", weights_only=False))
-robust.eval()
+try:
+    robust = TransformerAutoencoder(input_dim=INPUT_DIM)
+    robust.load_state_dict(torch.load(
+        f"{BASE}/transformer_robust_model.pth", map_location='cpu', weights_only=False))
+    robust.eval()
+except:
+    robust = None
 
 logger.info("All models loaded successfully.")
 
