@@ -12,7 +12,7 @@ from database import get_db
 import logging
 logger = logging.getLogger('stride.federation')
 
-BASE = r"C:\Users\ASUS\Documents\MBZUAI Project"
+BASE = os.path.dirname(os.path.abspath(__file__))
 
 # =========================
 # MODEL DEFINITION
