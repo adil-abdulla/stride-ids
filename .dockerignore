@@ -1,12 +1,10 @@
-__pycache__/
+﻿__pycache__/
 *.pyc
 *.pyo
 *.pyd
 .env
 logs/
 stride.db
-*.pth
-*.pkl
 archive/
 unsw/
 *.csv
